@@ -243,6 +243,39 @@ export function registerKeynoteTools(server: McpServer): void {
   );
 
   server.tool(
+    "keynote_reorder_slide",
+    "Move a slide from one position to another",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+      fromSlideNumber: z.number().describe("Current slide number (1-based)"),
+      toSlideNumber: z.number().describe("Target slide number (1-based)"),
+    },
+    async ({ documentName, fromSlideNumber, toSlideNumber }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Keynote");
+      const doc = app.documents.byName(params.documentName);
+      const slide = doc.slides[params.fromSlideNumber - 1];
+      app.move(slide, { to: doc.slides[params.toSlideNumber - 1] });
+      return JSON.stringify({ moved: true, from: params.fromSlideNumber, to: params.toSlideNumber, totalSlides: doc.slides.length });
+    `, { documentName, fromSlideNumber, toSlideNumber })),
+  );
+
+  server.tool(
+    "keynote_skip_slide",
+    "Mark a slide as skipped (hidden) or unskipped",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+      slideNumber: z.number().describe("Slide number (1-based)"),
+      skipped: z.boolean().describe("True to skip/hide, false to unskip/show"),
+    },
+    async ({ documentName, slideNumber, skipped }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Keynote");
+      const doc = app.documents.byName(params.documentName);
+      doc.slides[params.slideNumber - 1].skipped = params.skipped;
+      return JSON.stringify({ slideNumber: params.slideNumber, skipped: params.skipped });
+    `, { documentName, slideNumber, skipped })),
+  );
+
+  server.tool(
     "keynote_stop_slideshow",
     "Stop a running slideshow",
     {

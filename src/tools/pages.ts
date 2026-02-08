@@ -165,7 +165,7 @@ export function registerPagesTools(server: McpServer): void {
 
   server.tool(
     "pages_add_text",
-    "Append text to the end of the document body",
+    "Append text to the end of the document body (preserves existing formatting)",
     {
       documentName: z.string().describe("Name of the open document"),
       text: z.string().describe("Text to append"),
@@ -173,15 +173,52 @@ export function registerPagesTools(server: McpServer): void {
     async ({ documentName, text }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
-      const current = doc.bodyText();
-      doc.bodyText = current + params.text;
-      return JSON.stringify({ appended: true });
+      // Append by adding a new paragraph to preserve existing formatting
+      const para = app.Paragraph({ text: params.text });
+      doc.paragraphs.push(para);
+      return JSON.stringify({ appended: true, paragraphCount: doc.paragraphs.length });
     `, { documentName, text })),
   );
 
   server.tool(
+    "pages_insert_text_at",
+    "Insert text at a specific paragraph index",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      text: z.string().describe("Text to insert"),
+      afterParagraph: z.number().describe("Insert after this paragraph index (0-based). Use -1 to insert at the beginning."),
+    },
+    async ({ documentName, text, afterParagraph }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Pages");
+      const doc = app.documents.byName(params.documentName);
+      const para = app.Paragraph({ text: params.text });
+      if (params.afterParagraph < 0) {
+        doc.paragraphs.unshift(para);
+      } else {
+        doc.paragraphs.splice(params.afterParagraph + 1, 0, para);
+      }
+      return JSON.stringify({ inserted: true, paragraphCount: doc.paragraphs.length });
+    `, { documentName, text, afterParagraph })),
+  );
+
+  server.tool(
+    "pages_delete_text",
+    "Delete a paragraph by index",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      paragraphIndex: z.number().describe("Paragraph index to delete (0-based)"),
+    },
+    async ({ documentName, paragraphIndex }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Pages");
+      const doc = app.documents.byName(params.documentName);
+      app.delete(doc.paragraphs[params.paragraphIndex]);
+      return JSON.stringify({ deleted: true, paragraphCount: doc.paragraphs.length });
+    `, { documentName, paragraphIndex })),
+  );
+
+  server.tool(
     "pages_replace_text",
-    "Find and replace text in a Pages document",
+    "Find and replace text in a Pages document (operates per-paragraph to preserve formatting)",
     {
       documentName: z.string().describe("Name of the open document"),
       find: z.string().describe("Text to find"),
@@ -191,23 +228,24 @@ export function registerPagesTools(server: McpServer): void {
     async ({ documentName, find, replace, all }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
-      const current = doc.bodyText();
+      const paragraphs = doc.paragraphs();
       let count = 0;
-      let newText;
-      if (params.all !== false) {
-        const parts = current.split(params.find);
-        count = parts.length - 1;
-        newText = parts.join(params.replace);
-      } else {
-        const idx = current.indexOf(params.find);
-        if (idx !== -1) {
-          newText = current.substring(0, idx) + params.replace + current.substring(idx + params.find.length);
+      for (let i = 0; i < paragraphs.length; i++) {
+        const p = paragraphs[i];
+        let text;
+        try { text = p.text ? p.text() : ""; } catch(e) { continue; }
+        if (text.indexOf(params.find) === -1) continue;
+        if (params.all !== false) {
+          const parts = text.split(params.find);
+          count += parts.length - 1;
+          doc.paragraphs[i].text = parts.join(params.replace);
+        } else if (count === 0) {
+          const idx = text.indexOf(params.find);
+          doc.paragraphs[i].text = text.substring(0, idx) + params.replace + text.substring(idx + params.find.length);
           count = 1;
-        } else {
-          newText = current;
+          break;
         }
       }
-      doc.bodyText = newText;
       return JSON.stringify({ replacements: count });
     `, { documentName, find, replace, all: all ?? true })),
   );

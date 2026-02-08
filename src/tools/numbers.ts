@@ -598,22 +598,147 @@ export function registerNumbersTools(server: McpServer): void {
     `, { documentName, sheetName: sheetName ?? null, tableName: tableName ?? null })),
   );
 
+  server.tool(
+    "numbers_read_range",
+    "Read a specific cell range (e.g. 'B2:D10') instead of the entire table. Faster for large tables.",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      cellRange: z.string().describe("Cell range, e.g. 'A1:C10'"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+      tableName: z.string().optional().describe("Table name (defaults to first table)"),
+    },
+    async ({ documentName, cellRange, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+      const range = table.ranges[params.cellRange];
+      const cells = range.cells();
+      const values = cells.map(c => c.value());
+
+      // Figure out the range dimensions from the cell references
+      const rangeRef = range.name();
+      const colCount = range.columnCount();
+      const rowCount = range.rowCount();
+      const data = [];
+      for (let r = 0; r < rowCount; r++) {
+        data.push(values.slice(r * colCount, (r + 1) * colCount));
+      }
+      return JSON.stringify(data);
+    `, { documentName, cellRange, sheetName: sheetName ?? null, tableName: tableName ?? null })),
+  );
+
+  server.tool(
+    "numbers_merge_cells",
+    "Merge a range of cells",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      cellRange: z.string().describe("Cell range to merge, e.g. 'A1:C1'"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+      tableName: z.string().optional().describe("Table name (defaults to first table)"),
+    },
+    async ({ documentName, cellRange, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+      const range = table.ranges[params.cellRange];
+      range.merge();
+      return JSON.stringify({ merged: true, cellRange: params.cellRange });
+    `, { documentName, cellRange, sheetName: sheetName ?? null, tableName: tableName ?? null })),
+  );
+
+  server.tool(
+    "numbers_unmerge_cells",
+    "Unmerge a previously merged cell range",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      cellRange: z.string().describe("Cell range to unmerge, e.g. 'A1:C1'"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+      tableName: z.string().optional().describe("Table name (defaults to first table)"),
+    },
+    async ({ documentName, cellRange, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+      const range = table.ranges[params.cellRange];
+      range.unmerge();
+      return JSON.stringify({ unmerged: true, cellRange: params.cellRange });
+    `, { documentName, cellRange, sheetName: sheetName ?? null, tableName: tableName ?? null })),
+  );
+
+  server.tool(
+    "numbers_clear_cells",
+    "Clear the contents of a cell or range",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      cellRange: z.string().describe("Cell or range to clear, e.g. 'A1' or 'A1:C10'"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+      tableName: z.string().optional().describe("Table name (defaults to first table)"),
+    },
+    async ({ documentName, cellRange, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+      if (params.cellRange.includes(":")) {
+        const range = table.ranges[params.cellRange];
+        const cells = range.cells();
+        for (const cell of cells) { cell.value = null; }
+      } else {
+        table.cells[params.cellRange].value = null;
+      }
+      return JSON.stringify({ cleared: true, cellRange: params.cellRange });
+    `, { documentName, cellRange, sheetName: sheetName ?? null, tableName: tableName ?? null })),
+  );
+
+  server.tool(
+    "numbers_sort_rows",
+    "Sort table rows by a column",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      column: z.string().describe("Column letter to sort by, e.g. 'A'"),
+      order: z.enum(["ascending", "descending"]).optional().describe("Sort order (default: ascending)"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+      tableName: z.string().optional().describe("Table name (defaults to first table)"),
+    },
+    async ({ documentName, column, order, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+      const colStr = params.column.toUpperCase();
+      let colIndex = 0;
+      for (let i = 0; i < colStr.length; i++) {
+        colIndex = colIndex * 26 + (colStr.charCodeAt(i) - 64);
+      }
+      colIndex -= 1;
+      const col = table.columns[colIndex];
+      const direction = params.order === "descending" ? "descending" : "ascending";
+      table.sort({ by: col, direction: direction });
+      return JSON.stringify({ sorted: true, column: params.column, order: direction });
+    `, { documentName, column, order: order ?? null, sheetName: sheetName ?? null, tableName: tableName ?? null })),
+  );
+
   // ── Formatting Tools ──
 
   server.tool(
     "numbers_format_cells",
-    "Set formatting on a cell or range: font, size, color, alignment, background color",
+    "Set formatting on a cell or range: font, size, color, alignment, background color, bold, italic",
     {
       documentName: z.string().describe("Name of the open document"),
       cellRange: z.string().describe("Cell or range reference, e.g. 'A1' or 'A1:C3'"),
       format: z.object({
-        bold: z.boolean().optional().describe("Set bold"),
-        italic: z.boolean().optional().describe("Set italic"),
+        bold: z.boolean().optional().describe("Set bold (switches to bold variant of current font)"),
+        italic: z.boolean().optional().describe("Set italic (switches to italic variant of current font)"),
         fontSize: z.number().optional().describe("Font size in points"),
         fontName: z.string().optional().describe("Font name"),
         textColor: z.string().optional().describe("Text color as hex, e.g. '#FF0000'"),
         backgroundColor: z.string().optional().describe("Background color as hex, e.g. '#0000FF'"),
         alignment: z.enum(["left", "center", "right", "auto"]).optional().describe("Text alignment"),
+        verticalAlignment: z.enum(["top", "center", "bottom"]).optional().describe("Vertical alignment"),
+        textWrap: z.boolean().optional().describe("Enable text wrapping"),
       }).describe("Formatting options"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
@@ -625,7 +750,6 @@ export function registerNumbersTools(server: McpServer): void {
       const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
       const fmt = params.format;
 
-      // Parse range like "A1:C3" into individual cells
       const rangeStr = params.cellRange;
       let cells = [];
       if (rangeStr.includes(":")) {
@@ -643,7 +767,6 @@ export function registerNumbersTools(server: McpServer): void {
       }
 
       for (const cell of cells) {
-        if (fmt.bold !== undefined) cell.textColor = cell.textColor; // touch to ensure access
         if (fmt.fontSize !== undefined) cell.fontSize = fmt.fontSize;
         if (fmt.fontName !== undefined) cell.fontName = fmt.fontName;
         if (fmt.textColor !== undefined) {
@@ -655,11 +778,25 @@ export function registerNumbersTools(server: McpServer): void {
           cell.backgroundColor = [r, g, b];
         }
         if (fmt.alignment !== undefined) {
-          const alignMap = { left: "left", center: "center", right: "right", auto: "auto" };
-          cell.alignment = alignMap[fmt.alignment];
+          cell.alignment = fmt.alignment;
         }
-        if (fmt.bold !== undefined) {
-          cell.format = cell.format; // Numbers doesn't have direct bold; we use font
+        if (fmt.verticalAlignment !== undefined) {
+          cell.verticalAlignment = fmt.verticalAlignment;
+        }
+        if (fmt.textWrap !== undefined) {
+          cell.textWrap = fmt.textWrap;
+        }
+        // Bold/italic: switch font to bold/italic variant
+        if (fmt.bold !== undefined || fmt.italic !== undefined) {
+          let fontName = fmt.fontName || cell.fontName();
+          const baseName = fontName.replace(/ ?(Bold|Italic|Bold Italic|BoldItalic)$/i, "").trim();
+          let suffix = "";
+          const wantBold = fmt.bold !== undefined ? fmt.bold : /Bold/i.test(fontName);
+          const wantItalic = fmt.italic !== undefined ? fmt.italic : /Italic/i.test(fontName);
+          if (wantBold && wantItalic) suffix = " Bold Italic";
+          else if (wantBold) suffix = " Bold";
+          else if (wantItalic) suffix = " Italic";
+          cell.fontName = baseName + suffix;
         }
       }
 
