@@ -1,0 +1,27 @@
+{
+  "name": "iwork-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Apple iWork (Numbers, Pages, Keynote) automation",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "iwork-mcp": "dist/index.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc && chmod +x dist/index.js",
+    "dev": "tsc --watch",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5.8.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
