@@ -14,7 +14,7 @@ Ask Claude to build spreadsheets, write documents, and create presentations — 
 
 **Keynote** — Create presentations, add/delete/duplicate/reorder slides, set titles and bullet points, add images and shapes, set transitions and presenter notes, start/stop slideshows, export to PDF/PowerPoint/HTML.
 
-72 tools total.
+73 tools total.
 
 ## Install
 
@@ -50,7 +50,7 @@ claude mcp add iwork -- npx -y iwork-mcp
 
 ## Tools
 
-### Numbers (35 tools)
+### Numbers (36 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -89,6 +89,7 @@ claude mcp add iwork -- npx -y iwork-mcp
 | `numbers_format_cells` | Set font, size, color, bold, italic, alignment, background |
 | `numbers_set_column_width` | Set column width |
 | `numbers_set_row_height` | Set row height |
+| `numbers_create_sheet_with_table` | Create a full sheet with table, data, and formatting in one fast call |
 
 ### Pages (15 tools)
 

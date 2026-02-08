@@ -902,4 +902,136 @@ export function registerNumbersTools(server: McpServer): void {
       return JSON.stringify({ row: params.row, height: params.height, set: true });
     `, { documentName, row, height, sheetName: sheetName ?? null, tableName: tableName ?? null })),
   );
+
+  // ── Compound / Batch Tools ──
+
+  server.tool(
+    "numbers_create_sheet_with_table",
+    "Create a complete sheet with a named table, data, and formatting in ONE operation. Much faster than calling individual tools. Use this for bulk setup like calendars, reports, dashboards.",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      sheetName: z.string().describe("Name for the new sheet"),
+      tableName: z.string().optional().describe("Name for the table (default: same as sheet name)"),
+      data: z.array(z.array(z.union([z.string(), z.number(), z.boolean(), z.null()])))
+        .describe("2D array of table data. First row can be headers."),
+      headerRowCount: z.number().optional().describe("Number of header rows (default: 0 for no header styling)"),
+      columnWidths: z.array(z.number()).optional().describe("Width in points for each column"),
+      rowHeights: z.array(z.number()).optional().describe("Height in points for each row"),
+      formatting: z.array(z.object({
+        cellRange: z.string().describe("Cell or range, e.g. 'A1' or 'A1:G1'"),
+        bold: z.boolean().optional(),
+        italic: z.boolean().optional(),
+        fontSize: z.number().optional(),
+        fontName: z.string().optional(),
+        textColor: z.string().optional().describe("Hex color, e.g. '#FF0000'"),
+        backgroundColor: z.string().optional().describe("Hex color, e.g. '#0000FF'"),
+        alignment: z.enum(["left", "center", "right", "auto"]).optional(),
+        verticalAlignment: z.enum(["top", "center", "bottom"]).optional(),
+        textWrap: z.boolean().optional(),
+      })).optional().describe("Array of formatting rules to apply"),
+      deleteDefaultTable: z.boolean().optional().describe("Delete the default 'Table 1' that Numbers auto-creates (default: true)"),
+    },
+    async ({ documentName, sheetName, tableName, data, headerRowCount, columnWidths, rowHeights, formatting, deleteDefaultTable }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+
+      // Create the sheet
+      const sheet = app.Sheet();
+      doc.sheets.push(sheet);
+      sheet.name = params.sheetName;
+
+      // Delete the default "Table 1" that Numbers auto-creates
+      if (params.deleteDefaultTable !== false) {
+        try { app.delete(sheet.tables[0]); } catch(e) {}
+      }
+
+      // Create our table with the right dimensions
+      const dataRows = params.data.length;
+      const dataCols = Math.max(...params.data.map(r => r.length));
+      const table = app.Table({ rowCount: dataRows, columnCount: dataCols });
+      sheet.tables.push(table);
+      table.name = params.tableName || params.sheetName;
+
+      // Set header row count (default 0 = no grey header styling)
+      table.headerRowCount = (params.headerRowCount !== null && params.headerRowCount !== undefined) ? params.headerRowCount : 0;
+
+      // Write all data
+      const colCount = table.columnCount();
+      for (let r = 0; r < dataRows; r++) {
+        for (let c = 0; c < params.data[r].length; c++) {
+          const val = params.data[r][c];
+          if (val !== null) {
+            table.cells[r * colCount + c].value = val;
+          }
+        }
+      }
+
+      // Set column widths
+      if (params.columnWidths) {
+        for (let i = 0; i < Math.min(params.columnWidths.length, colCount); i++) {
+          table.columns[i].width = params.columnWidths[i];
+        }
+      }
+
+      // Set row heights
+      if (params.rowHeights) {
+        for (let i = 0; i < Math.min(params.rowHeights.length, dataRows); i++) {
+          table.rows[i].height = params.rowHeights[i];
+        }
+      }
+
+      // Apply formatting
+      function hexToRGB(hex) {
+        return [parseInt(hex.slice(1,3),16)/255, parseInt(hex.slice(3,5),16)/255, parseInt(hex.slice(5,7),16)/255];
+      }
+
+      if (params.formatting) {
+        for (const fmt of params.formatting) {
+          let cells = [];
+          if (fmt.cellRange.includes(":")) {
+            cells = table.ranges[fmt.cellRange].cells();
+          } else {
+            cells = [table.cells[fmt.cellRange]];
+          }
+          for (const cell of cells) {
+            if (fmt.fontSize !== undefined) cell.fontSize = fmt.fontSize;
+            if (fmt.fontName !== undefined) cell.fontName = fmt.fontName;
+            if (fmt.textColor !== undefined) cell.textColor = hexToRGB(fmt.textColor);
+            if (fmt.backgroundColor !== undefined) cell.backgroundColor = hexToRGB(fmt.backgroundColor);
+            if (fmt.alignment !== undefined) cell.alignment = fmt.alignment;
+            if (fmt.verticalAlignment !== undefined) cell.verticalAlignment = fmt.verticalAlignment;
+            if (fmt.textWrap !== undefined) cell.textWrap = fmt.textWrap;
+            if (fmt.bold !== undefined || fmt.italic !== undefined) {
+              let fontName = fmt.fontName || cell.fontName();
+              const baseName = fontName.replace(/ ?(Bold|Italic|Bold Italic|BoldItalic)$/i, "").trim();
+              let suffix = "";
+              const wantBold = fmt.bold !== undefined ? fmt.bold : /Bold/i.test(fontName);
+              const wantItalic = fmt.italic !== undefined ? fmt.italic : /Italic/i.test(fontName);
+              if (wantBold && wantItalic) suffix = " Bold Italic";
+              else if (wantBold) suffix = " Bold";
+              else if (wantItalic) suffix = " Italic";
+              cell.fontName = baseName + suffix;
+            }
+          }
+        }
+      }
+
+      return JSON.stringify({
+        sheetName: sheet.name(),
+        tableName: table.name(),
+        rows: dataRows,
+        columns: dataCols,
+        headerRowCount: table.headerRowCount(),
+      });
+    `, {
+      documentName, sheetName,
+      tableName: tableName ?? null,
+      data,
+      headerRowCount: headerRowCount ?? null,
+      columnWidths: columnWidths ?? null,
+      rowHeights: rowHeights ?? null,
+      formatting: formatting ?? null,
+      deleteDefaultTable: deleteDefaultTable ?? true,
+    })),
+  );
 }
