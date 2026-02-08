@@ -18,11 +18,19 @@ Ask Claude to build spreadsheets, write documents, and create presentations — 
 
 ## Install
 
+### Claude Desktop
+
 ```bash
 npx iwork-mcp install
 ```
 
 Then restart Claude Desktop (Cmd+Q and reopen). Done.
+
+### Claude Code
+
+```bash
+claude mcp add iwork -- npx -y iwork-mcp
+```
 
 ### Requirements
 
