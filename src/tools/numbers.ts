@@ -810,9 +810,9 @@ export function registerNumbersTools(server: McpServer): void {
       }
 
       function hexToRGB(hex) {
-        const r = parseInt(hex.slice(1, 3), 16) / 255;
-        const g = parseInt(hex.slice(3, 5), 16) / 255;
-        const b = parseInt(hex.slice(5, 7), 16) / 255;
+        const r = parseInt(hex.slice(1, 3), 16) * 257;
+        const g = parseInt(hex.slice(3, 5), 16) * 257;
+        const b = parseInt(hex.slice(5, 7), 16) * 257;
         return [r, g, b];
       }
 
@@ -820,12 +820,10 @@ export function registerNumbersTools(server: McpServer): void {
         if (fmt.fontSize !== undefined) cell.fontSize = fmt.fontSize;
         if (fmt.fontName !== undefined) cell.fontName = fmt.fontName;
         if (fmt.textColor !== undefined) {
-          const [r, g, b] = hexToRGB(fmt.textColor);
-          cell.textColor = [r, g, b];
+          cell.textColor = hexToRGB(fmt.textColor);
         }
         if (fmt.backgroundColor !== undefined) {
-          const [r, g, b] = hexToRGB(fmt.backgroundColor);
-          cell.backgroundColor = [r, g, b];
+          cell.backgroundColor = hexToRGB(fmt.backgroundColor);
         }
         if (fmt.alignment !== undefined) {
           cell.alignment = fmt.alignment;
@@ -836,16 +834,16 @@ export function registerNumbersTools(server: McpServer): void {
         if (fmt.textWrap !== undefined) {
           cell.textWrap = fmt.textWrap;
         }
-        // Bold/italic: switch font to bold/italic variant
+        // Bold/italic: switch font to bold/italic variant (PostScript names)
         if (fmt.bold !== undefined || fmt.italic !== undefined) {
           let fontName = fmt.fontName || cell.fontName();
-          const baseName = fontName.replace(/ ?(Bold|Italic|Bold Italic|BoldItalic)$/i, "").trim();
-          let suffix = "";
+          const baseName = fontName.replace(/[- ]?(Bold ?Italic|BoldItalic|Bold|Italic)$/i, "").trim();
           const wantBold = fmt.bold !== undefined ? fmt.bold : /Bold/i.test(fontName);
           const wantItalic = fmt.italic !== undefined ? fmt.italic : /Italic/i.test(fontName);
-          if (wantBold && wantItalic) suffix = " Bold Italic";
-          else if (wantBold) suffix = " Bold";
-          else if (wantItalic) suffix = " Italic";
+          let suffix = "";
+          if (wantBold && wantItalic) suffix = "-BoldItalic";
+          else if (wantBold) suffix = "-Bold";
+          else if (wantItalic) suffix = "-Italic";
           cell.fontName = baseName + suffix;
         }
       }
@@ -982,7 +980,7 @@ export function registerNumbersTools(server: McpServer): void {
 
       // Apply formatting
       function hexToRGB(hex) {
-        return [parseInt(hex.slice(1,3),16)/255, parseInt(hex.slice(3,5),16)/255, parseInt(hex.slice(5,7),16)/255];
+        return [parseInt(hex.slice(1,3),16)*257, parseInt(hex.slice(3,5),16)*257, parseInt(hex.slice(5,7),16)*257];
       }
 
       if (params.formatting) {
@@ -1003,13 +1001,13 @@ export function registerNumbersTools(server: McpServer): void {
             if (fmt.textWrap !== undefined) cell.textWrap = fmt.textWrap;
             if (fmt.bold !== undefined || fmt.italic !== undefined) {
               let fontName = fmt.fontName || cell.fontName();
-              const baseName = fontName.replace(/ ?(Bold|Italic|Bold Italic|BoldItalic)$/i, "").trim();
-              let suffix = "";
+              const baseName = fontName.replace(/[- ]?(Bold ?Italic|BoldItalic|Bold|Italic)$/i, "").trim();
               const wantBold = fmt.bold !== undefined ? fmt.bold : /Bold/i.test(fontName);
               const wantItalic = fmt.italic !== undefined ? fmt.italic : /Italic/i.test(fontName);
-              if (wantBold && wantItalic) suffix = " Bold Italic";
-              else if (wantBold) suffix = " Bold";
-              else if (wantItalic) suffix = " Italic";
+              let suffix = "";
+              if (wantBold && wantItalic) suffix = "-BoldItalic";
+              else if (wantBold) suffix = "-Bold";
+              else if (wantItalic) suffix = "-Italic";
               cell.fontName = baseName + suffix;
             }
           }
