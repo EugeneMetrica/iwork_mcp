@@ -152,6 +152,110 @@ export function registerKeynoteTools(server: McpServer): void {
   );
 
   server.tool(
+    "keynote_get_slide_content",
+    "Read all content from a slide: title, body, presenter notes, and list of items",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+      slideNumber: z.number().describe("Slide number (1-based)"),
+    },
+    async ({ documentName, slideNumber }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Keynote");
+      const doc = app.documents.byName(params.documentName);
+      const slide = doc.slides[params.slideNumber - 1];
+
+      let title = "";
+      try { const t = slide.defaultTitleItem(); if (t) title = t.objectText(); } catch(e) {}
+      let body = "";
+      try { const b = slide.defaultBodyItem(); if (b) body = b.objectText(); } catch(e) {}
+      let notes = "";
+      try { notes = slide.presenterNotes(); } catch(e) {}
+
+      const textItems = [];
+      try {
+        const items = slide.textItems();
+        for (let i = 0; i < items.length; i++) {
+          textItems.push({ index: i, text: items[i].objectText(), width: items[i].width(), height: items[i].height() });
+        }
+      } catch(e) {}
+
+      const images = [];
+      try {
+        const imgs = slide.images();
+        for (let i = 0; i < imgs.length; i++) {
+          images.push({ index: i, width: imgs[i].width(), height: imgs[i].height() });
+        }
+      } catch(e) {}
+
+      const shapes = [];
+      try {
+        const shps = slide.shapes();
+        for (let i = 0; i < shps.length; i++) {
+          shapes.push({ index: i, text: shps[i].objectText(), width: shps[i].width(), height: shps[i].height() });
+        }
+      } catch(e) {}
+
+      return JSON.stringify({ slideNumber: params.slideNumber, title, body, presenterNotes: notes, textItems, images, shapes });
+    `, { documentName, slideNumber })),
+  );
+
+  server.tool(
+    "keynote_delete_slide",
+    "Delete a slide from the presentation",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+      slideNumber: z.number().describe("Slide number to delete (1-based)"),
+    },
+    async ({ documentName, slideNumber }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Keynote");
+      const doc = app.documents.byName(params.documentName);
+      app.delete(doc.slides[params.slideNumber - 1]);
+      return JSON.stringify({ deleted: true, slideNumber: params.slideNumber, remainingSlides: doc.slides.length });
+    `, { documentName, slideNumber })),
+  );
+
+  server.tool(
+    "keynote_duplicate_slide",
+    "Duplicate an existing slide",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+      slideNumber: z.number().describe("Slide number to duplicate (1-based)"),
+    },
+    async ({ documentName, slideNumber }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Keynote");
+      const doc = app.documents.byName(params.documentName);
+      app.duplicate(doc.slides[params.slideNumber - 1]);
+      return JSON.stringify({ duplicated: true, totalSlides: doc.slides.length });
+    `, { documentName, slideNumber })),
+  );
+
+  server.tool(
+    "keynote_list_master_slides",
+    "List all available master slide layouts in the current theme",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+    },
+    async ({ documentName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Keynote");
+      const doc = app.documents.byName(params.documentName);
+      const masters = doc.masterSlides();
+      return JSON.stringify(masters.map((m, i) => ({ index: i, name: m.name() })));
+    `, { documentName })),
+  );
+
+  server.tool(
+    "keynote_stop_slideshow",
+    "Stop a running slideshow",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+    },
+    async ({ documentName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Keynote");
+      app.stop(app.documents.byName(params.documentName));
+      return JSON.stringify({ stopped: true });
+    `, { documentName })),
+  );
+
+  server.tool(
     "keynote_add_slide",
     "Add a new slide to the presentation",
     {

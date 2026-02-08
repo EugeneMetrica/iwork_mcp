@@ -219,6 +219,128 @@ export function registerNumbersTools(server: McpServer): void {
     `, { documentName, sheetName: sheetName ?? null, tableName: tableName ?? null, rows: rows ?? null, columns: columns ?? null })),
   );
 
+  server.tool(
+    "numbers_rename_sheet",
+    "Rename a sheet in a Numbers document",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      sheetName: z.string().describe("Current sheet name"),
+      newName: z.string().describe("New name for the sheet"),
+    },
+    async ({ documentName, sheetName, newName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = doc.sheets.byName(params.sheetName);
+      sheet.name = params.newName;
+      return JSON.stringify({ renamed: true, oldName: params.sheetName, newName: params.newName });
+    `, { documentName, sheetName, newName })),
+  );
+
+  server.tool(
+    "numbers_delete_sheet",
+    "Delete a sheet from a Numbers document",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      sheetName: z.string().describe("Name of the sheet to delete"),
+    },
+    async ({ documentName, sheetName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = doc.sheets.byName(params.sheetName);
+      app.delete(sheet);
+      return JSON.stringify({ deleted: true, sheetName: params.sheetName });
+    `, { documentName, sheetName })),
+  );
+
+  server.tool(
+    "numbers_rename_table",
+    "Rename a table in a Numbers document",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      tableName: z.string().describe("Current table name"),
+      newName: z.string().describe("New name for the table"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+    },
+    async ({ documentName, tableName, newName, sheetName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const table = sheet.tables.byName(params.tableName);
+      table.name = params.newName;
+      return JSON.stringify({ renamed: true, oldName: params.tableName, newName: params.newName });
+    `, { documentName, tableName, newName, sheetName: sheetName ?? null })),
+  );
+
+  server.tool(
+    "numbers_delete_table",
+    "Delete a table from a sheet",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      tableName: z.string().describe("Name of the table to delete"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+    },
+    async ({ documentName, tableName, sheetName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const table = sheet.tables.byName(params.tableName);
+      app.delete(table);
+      return JSON.stringify({ deleted: true, tableName: params.tableName });
+    `, { documentName, tableName, sheetName: sheetName ?? null })),
+  );
+
+  server.tool(
+    "numbers_delete_row",
+    "Delete one or more rows from a table",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      rowIndex: z.number().describe("Row number to delete (1-based)"),
+      count: z.number().optional().describe("Number of rows to delete (default: 1)"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+      tableName: z.string().optional().describe("Table name (defaults to first table)"),
+    },
+    async ({ documentName, rowIndex, count, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+      const n = params.count || 1;
+      for (let i = 0; i < n; i++) {
+        app.delete(table.rows[params.rowIndex - 1]);
+      }
+      return JSON.stringify({ deleted: n, newRowCount: table.rowCount() });
+    `, { documentName, rowIndex, count: count ?? null, sheetName: sheetName ?? null, tableName: tableName ?? null })),
+  );
+
+  server.tool(
+    "numbers_delete_column",
+    "Delete one or more columns from a table",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      column: z.string().describe("Column letter to delete, e.g. 'A', 'B'"),
+      count: z.number().optional().describe("Number of columns to delete (default: 1)"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+      tableName: z.string().optional().describe("Table name (defaults to first table)"),
+    },
+    async ({ documentName, column, count, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+      const colStr = params.column.toUpperCase();
+      let colIndex = 0;
+      for (let i = 0; i < colStr.length; i++) {
+        colIndex = colIndex * 26 + (colStr.charCodeAt(i) - 64);
+      }
+      colIndex -= 1;
+      const n = params.count || 1;
+      for (let i = 0; i < n; i++) {
+        app.delete(table.columns[colIndex]);
+      }
+      return JSON.stringify({ deleted: n, newColumnCount: table.columnCount() });
+    `, { documentName, column, count: count ?? null, sheetName: sheetName ?? null, tableName: tableName ?? null })),
+  );
+
   // ── Data Reading Tools ──
 
   server.tool(
@@ -236,14 +358,11 @@ export function registerNumbersTools(server: McpServer): void {
       const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
       const rowCount = table.rowCount();
       const colCount = table.columnCount();
+      // Batch read all cell values in one IPC call
+      const allValues = table.cells.value();
       const data = [];
       for (let r = 0; r < rowCount; r++) {
-        const row = [];
-        for (let c = 0; c < colCount; c++) {
-          const cell = table.cells[r * colCount + c];
-          row.push(cell.value());
-        }
-        data.push(row);
+        data.push(allValues.slice(r * colCount, (r + 1) * colCount));
       }
       return JSON.stringify(data);
     `, { documentName, sheetName: sheetName ?? null, tableName: tableName ?? null })),
