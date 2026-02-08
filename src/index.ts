@@ -13,7 +13,7 @@ if (process.argv[2] === "install") {
 
   const server = new McpServer({
     name: "iwork-mcp",
-    version: "0.1.0",
+    version: "0.5.0",
   });
 
   registerNumbersTools(server);

@@ -198,8 +198,10 @@ export function registerNumbersTools(server: McpServer): void {
       tableName: z.string().optional().describe("Name for the new table"),
       rows: z.number().optional().describe("Number of rows (default: 4)"),
       columns: z.number().optional().describe("Number of columns (default: 4)"),
+      headerRowCount: z.number().optional().describe("Number of header rows (default: 1, set to 0 to remove header row styling)"),
+      headerColumnCount: z.number().optional().describe("Number of header columns (default: 0)"),
     },
-    async ({ documentName, sheetName, tableName, rows, columns }) => handleJXA(() => runJXA<string>(`
+    async ({ documentName, sheetName, tableName, rows, columns, headerRowCount, headerColumnCount }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
       const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
@@ -211,12 +213,20 @@ export function registerNumbersTools(server: McpServer): void {
       if (params.tableName) {
         table.name = params.tableName;
       }
+      if (params.headerRowCount !== null && params.headerRowCount !== undefined) {
+        table.headerRowCount = params.headerRowCount;
+      }
+      if (params.headerColumnCount !== null && params.headerColumnCount !== undefined) {
+        table.headerColumnCount = params.headerColumnCount;
+      }
       return JSON.stringify({
         name: table.name(),
         rowCount: table.rowCount(),
         columnCount: table.columnCount(),
+        headerRowCount: table.headerRowCount(),
+        headerColumnCount: table.headerColumnCount(),
       });
-    `, { documentName, sheetName: sheetName ?? null, tableName: tableName ?? null, rows: rows ?? null, columns: columns ?? null })),
+    `, { documentName, sheetName: sheetName ?? null, tableName: tableName ?? null, rows: rows ?? null, columns: columns ?? null, headerRowCount: headerRowCount ?? null, headerColumnCount: headerColumnCount ?? null })),
   );
 
   server.tool(
@@ -719,6 +729,46 @@ export function registerNumbersTools(server: McpServer): void {
       table.sort({ by: col, direction: direction });
       return JSON.stringify({ sorted: true, column: params.column, order: direction });
     `, { documentName, column, order: order ?? null, sheetName: sheetName ?? null, tableName: tableName ?? null })),
+  );
+
+  // ── Table Configuration Tools ──
+
+  server.tool(
+    "numbers_set_header_rows",
+    "Set the number of header rows on a table. Header rows get special styling (bold text, grey background). Set to 0 to remove header styling entirely.",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      headerRowCount: z.number().describe("Number of header rows (0 removes all header styling, 1 is default)"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+      tableName: z.string().optional().describe("Table name (defaults to first table)"),
+    },
+    async ({ documentName, headerRowCount, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+      table.headerRowCount = params.headerRowCount;
+      return JSON.stringify({ headerRowCount: table.headerRowCount(), tableName: table.name() });
+    `, { documentName, headerRowCount, sheetName: sheetName ?? null, tableName: tableName ?? null })),
+  );
+
+  server.tool(
+    "numbers_set_header_columns",
+    "Set the number of header columns on a table. Header columns get special styling. Set to 0 to remove header column styling.",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      headerColumnCount: z.number().describe("Number of header columns (0 removes header column styling)"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+      tableName: z.string().optional().describe("Table name (defaults to first table)"),
+    },
+    async ({ documentName, headerColumnCount, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+      table.headerColumnCount = params.headerColumnCount;
+      return JSON.stringify({ headerColumnCount: table.headerColumnCount(), tableName: table.name() });
+    `, { documentName, headerColumnCount, sheetName: sheetName ?? null, tableName: tableName ?? null })),
   );
 
   // ── Formatting Tools ──
