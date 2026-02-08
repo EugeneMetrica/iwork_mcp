@@ -341,6 +341,67 @@ export function registerNumbersTools(server: McpServer): void {
   );
 
   server.tool(
+    "numbers_write_table",
+    "Bulk write an entire table of data in a single operation. Much faster than writing cells individually. Resizes the table to fit the data automatically.",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      data: z.array(z.array(z.union([z.string(), z.number(), z.boolean(), z.null()])))
+        .describe("2D array of data — first row can be headers. Null cells are skipped."),
+      startCell: z.string().optional().describe("Top-left cell to start writing from (default: 'A1')"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+      tableName: z.string().optional().describe("Table name (defaults to first table)"),
+      resizeToFit: z.boolean().optional().describe("Resize table to fit data (default: true)"),
+    },
+    async ({ documentName, data, startCell, sheetName, tableName, resizeToFit }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+
+      // Parse start cell (e.g. "B3" -> col=1, row=2)
+      const cellRef = (params.startCell || "A1").toUpperCase();
+      const colMatch = cellRef.match(/^([A-Z]+)/);
+      const rowMatch = cellRef.match(/(\\d+)$/);
+      let startCol = 0;
+      if (colMatch) {
+        for (let i = 0; i < colMatch[1].length; i++) {
+          startCol = startCol * 26 + (colMatch[1].charCodeAt(i) - 64);
+        }
+        startCol -= 1;
+      }
+      const startRow = rowMatch ? parseInt(rowMatch[1]) - 1 : 0;
+
+      const dataRows = params.data.length;
+      const dataCols = Math.max(...params.data.map(r => r.length));
+      const needRows = startRow + dataRows;
+      const needCols = startCol + dataCols;
+
+      // Resize table if needed
+      if (params.resizeToFit !== false) {
+        while (table.rowCount() < needRows) {
+          table.rows.push(app.Row());
+        }
+        while (table.columnCount() < needCols) {
+          table.columns.push(app.Column());
+        }
+      }
+
+      const colCount = table.columnCount();
+      let cellsWritten = 0;
+      for (let r = 0; r < dataRows; r++) {
+        for (let c = 0; c < params.data[r].length; c++) {
+          const val = params.data[r][c];
+          if (val !== null) {
+            table.cells[(startRow + r) * colCount + (startCol + c)].value = val;
+            cellsWritten++;
+          }
+        }
+      }
+      return JSON.stringify({ cellsWritten: cellsWritten, rows: dataRows, columns: dataCols });
+    `, { documentName, data, startCell: startCell ?? null, sheetName: sheetName ?? null, tableName: tableName ?? null, resizeToFit: resizeToFit ?? true })),
+  );
+
+  server.tool(
     "numbers_set_formula",
     "Set a formula on a cell (e.g. '=SUM(A1:A10)')",
     {
