@@ -47,8 +47,7 @@ export function install(): void {
   // Write config
   writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n");
 
-  console.log("iwork-mcp installed successfully!");
-  console.log("");
+  console.log("\niwork-mcp installed successfully!\n");
   console.log("Restart Claude Desktop to activate (Cmd+Q, then reopen).");
-  console.log("You'll get 49 tools for Numbers, Pages, and Keynote.");
+  console.log("73 tools for Numbers, Pages, and Keynote — ready to go.");
 }
