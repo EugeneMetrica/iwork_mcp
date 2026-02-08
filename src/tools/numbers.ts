@@ -652,6 +652,9 @@ export function registerNumbersTools(server: McpServer): void {
       const doc = app.documents.byName(params.documentName);
       const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
       const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+      // Merging fails if range spans header/non-header boundaries — clear headers first
+      if (table.headerRowCount() > 0) table.headerRowCount = 0;
+      if (table.headerColumnCount() > 0) table.headerColumnCount = 0;
       const range = table.ranges[params.cellRange];
       range.merge();
       return JSON.stringify({ merged: true, cellRange: params.cellRange });
@@ -950,8 +953,9 @@ export function registerNumbersTools(server: McpServer): void {
       sheet.tables.push(table);
       table.name = params.tableName || params.sheetName;
 
-      // Set header row count (default 0 = no grey header styling)
+      // Set header counts (default 0 = no header styling, allows merging across all cells)
       table.headerRowCount = (params.headerRowCount !== null && params.headerRowCount !== undefined) ? params.headerRowCount : 0;
+      table.headerColumnCount = 0;
 
       // Write all data
       const colCount = table.columnCount();
