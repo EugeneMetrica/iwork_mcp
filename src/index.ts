@@ -1,19 +1,26 @@
 #!/usr/bin/env node
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { registerNumbersTools } from "./tools/numbers.js";
-import { registerPagesTools } from "./tools/pages.js";
-import { registerKeynoteTools } from "./tools/keynote.js";
 
-const server = new McpServer({
-  name: "iwork-mcp",
-  version: "0.1.0",
-});
+// Handle `npx iwork-mcp install` before loading MCP deps
+if (process.argv[2] === "install") {
+  const { install } = await import("./install.js");
+  install();
+} else {
+  const { McpServer } = await import("@modelcontextprotocol/sdk/server/mcp.js");
+  const { StdioServerTransport } = await import("@modelcontextprotocol/sdk/server/stdio.js");
+  const { registerNumbersTools } = await import("./tools/numbers.js");
+  const { registerPagesTools } = await import("./tools/pages.js");
+  const { registerKeynoteTools } = await import("./tools/keynote.js");
 
-registerNumbersTools(server);
-registerPagesTools(server);
-registerKeynoteTools(server);
+  const server = new McpServer({
+    name: "iwork-mcp",
+    version: "0.1.0",
+  });
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
-console.error("iwork-mcp server running");
+  registerNumbersTools(server);
+  registerPagesTools(server);
+  registerKeynoteTools(server);
+
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error("iwork-mcp server running");
+}

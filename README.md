@@ -18,30 +18,11 @@ Ask Claude to build spreadsheets, write documents, and create presentations — 
 
 ## Install
 
-Paste this into your terminal:
-
 ```bash
-open "claude://install-mcp?name=iwork&command=npx&args=-y,iwork-mcp"
+npx iwork-mcp install
 ```
 
-That's it. Claude Desktop will restart with iWork tools enabled.
-
-### Manual setup
-
-If the link above doesn't work, open Claude Desktop settings, go to **Developer > Edit Config**, and add:
-
-```json
-{
-  "mcpServers": {
-    "iwork": {
-      "command": "npx",
-      "args": ["-y", "iwork-mcp"]
-    }
-  }
-}
-```
-
-Then restart Claude Desktop.
+Then restart Claude Desktop (Cmd+Q and reopen). Done.
 
 ### Requirements
 
