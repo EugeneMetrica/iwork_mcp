@@ -1,20 +1,18 @@
 # iwork-mcp
 
-MCP server that lets AI assistants create, read, edit, and export Apple iWork documents (Numbers, Pages, Keynote) through natural language.
+MCP server for Apple iWork automation — 73 tools for Numbers, Pages, and Keynote.
 
-One line to install. Works with Claude Desktop and any MCP client.
+One line to install. Works with Claude Desktop, Claude Code, and any MCP client.
 
 ## What it does
 
-Ask Claude to build spreadsheets, write documents, and create presentations — and it controls the real iWork apps on your Mac through Apple's JavaScript for Automation (JXA) scripting bridge.
+Ask Claude to build spreadsheets, write documents, and create presentations — it controls the real iWork apps on your Mac through Apple's JavaScript for Automation (JXA) scripting bridge.
 
-**Numbers** — Create spreadsheets, read/write cells and ranges, set formulas, sort rows, merge cells, format ranges, manage sheets and tables, export to PDF/Excel/CSV.
+**Numbers** — Create spreadsheets, read/write cells and ranges, set formulas, sort rows, merge cells, format cells (fonts, colors, backgrounds, alignment), manage sheets and tables, set column widths and row heights, bulk-create sheets with data and formatting in one call, export to PDF/Excel/CSV.
 
-**Pages** — Create documents, read and insert text at any position, find and replace (preserves formatting), format paragraphs, insert images and tables, export to PDF/Word/EPUB.
+**Pages** — Create documents, read and insert text at any position, find and replace (preserves formatting), format paragraphs (font, size, color, bold, italic), insert images and tables, export to PDF/Word/EPUB.
 
-**Keynote** — Create presentations, add/delete/duplicate/reorder slides, set titles and bullet points, add images and shapes, set transitions and presenter notes, start/stop slideshows, export to PDF/PowerPoint/HTML.
-
-73 tools total.
+**Keynote** — Create presentations, add/delete/duplicate/reorder/skip slides, read slide content, set titles and bullet points, add images and shapes, set transitions and presenter notes, list master slide layouts, start/stop slideshows, export to PDF/PowerPoint/HTML.
 
 ## Install
 
@@ -34,7 +32,7 @@ claude mcp add iwork -- npx -y iwork-mcp
 
 ### Requirements
 
-- macOS with Numbers, Pages, or Keynote installed (free on every Mac)
+- macOS with Numbers, Pages, and Keynote installed (free from the App Store)
 - [Node.js 18+](https://nodejs.org) (`brew install node` if you have Homebrew)
 - On first use, macOS will ask to grant Automation permission — click OK
 
@@ -47,6 +45,8 @@ claude mcp add iwork -- npx -y iwork-mcp
 > Create a Keynote presentation about renewable energy with 6 slides. Each slide should have a title and 3-4 bullet points.
 
 > Make a Pages document with a project proposal. Include a title, three sections with headers, and export it as a PDF to my Desktop.
+
+> Create a 2026 calendar in Numbers with a sheet for each month, colored headers, and weekend highlighting.
 
 ## Tools
 
@@ -65,7 +65,7 @@ claude mcp add iwork -- npx -y iwork-mcp
 | `numbers_rename_sheet` | Rename a sheet |
 | `numbers_delete_sheet` | Delete a sheet |
 | `numbers_list_tables` | List tables with dimensions |
-| `numbers_add_table` | Create a new table |
+| `numbers_add_table` | Create a new table (configurable headers) |
 | `numbers_rename_table` | Rename a table |
 | `numbers_delete_table` | Delete a table |
 | `numbers_read_table` | Read all data as a 2D array |
@@ -81,7 +81,7 @@ claude mcp add iwork -- npx -y iwork-mcp
 | `numbers_delete_row` | Delete rows |
 | `numbers_delete_column` | Delete columns |
 | `numbers_sort_rows` | Sort table by a column |
-| `numbers_set_header_rows` | Set header row count (0 removes grey header styling) |
+| `numbers_set_header_rows` | Set header row count (0 removes header styling) |
 | `numbers_set_header_columns` | Set header column count |
 | `numbers_merge_cells` | Merge a cell range |
 | `numbers_unmerge_cells` | Unmerge cells |
@@ -140,7 +140,7 @@ claude mcp add iwork -- npx -y iwork-mcp
 
 ## How it works
 
-The server runs JXA (JavaScript for Automation) scripts via `osascript` to control iWork apps. Each tool call is a single `osascript` invocation that does all work internally — parameters go in as JSON via `argv[0]`, results come back as JSON via stdout.
+The server runs JXA (JavaScript for Automation) scripts via `osascript` to control iWork apps. Each tool call is a single `osascript` invocation — parameters go in as JSON via `argv[0]`, results come back as JSON via stdout.
 
 ```
 Claude Desktop / Claude Code
@@ -176,12 +176,12 @@ To test locally with Claude Desktop, point to your local build:
 
 ## Limitations
 
-- **macOS only** — requires iWork apps (Numbers, Pages, Keynote), which are free on every Mac
-- **Apps are visible** — iWork apps launch and show their windows; there's no headless mode
-- **~430ms per call** — osascript startup overhead on each tool invocation
-- **Formulas are write-only** — Apple's scripting dictionary returns computed values, not the formula text
+- **macOS only** — requires Numbers, Pages, and Keynote (free from the App Store)
+- **Apps are visible** — iWork apps launch and show windows; there's no headless mode
+- **~430ms per call** — osascript startup overhead per tool invocation (use bulk tools like `create_sheet_with_table` for speed)
+- **Formulas are write-only** — Apple's scripting dictionary returns computed values, not formula text
 - **No comments or track changes** — not exposed in the scripting dictionary
-- **First-use permission prompt** — macOS will ask you to grant Automation access once
+- **First-use permission prompt** — macOS will ask to grant Automation access once
 
 ## License
 
