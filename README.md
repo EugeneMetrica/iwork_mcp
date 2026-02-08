@@ -8,13 +8,13 @@ One line to install. Works with Claude Desktop and any MCP client.
 
 Ask Claude to build spreadsheets, write documents, and create presentations — and it controls the real iWork apps on your Mac through Apple's JavaScript for Automation (JXA) scripting bridge.
 
-**Numbers** — Create spreadsheets, read/write cells, set formulas, format ranges, add rows and columns, export to PDF/Excel/CSV.
+**Numbers** — Create spreadsheets, read/write cells and ranges, set formulas, sort rows, merge cells, format ranges, manage sheets and tables, export to PDF/Excel/CSV.
 
-**Pages** — Create documents, read and append text, find and replace, format paragraphs, insert images and tables, export to PDF/Word/EPUB.
+**Pages** — Create documents, read and insert text at any position, find and replace (preserves formatting), format paragraphs, insert images and tables, export to PDF/Word/EPUB.
 
-**Keynote** — Create presentations, add slides, set titles and bullet points, add images and shapes, set transitions and presenter notes, start slideshows, export to PDF/PowerPoint/HTML.
+**Keynote** — Create presentations, add/delete/duplicate/reorder slides, set titles and bullet points, add images and shapes, set transitions and presenter notes, start/stop slideshows, export to PDF/PowerPoint/HTML.
 
-49 tools total.
+70 tools total.
 
 ## Install
 
@@ -50,7 +50,7 @@ claude mcp add iwork -- npx -y iwork-mcp
 
 ## Tools
 
-### Numbers (21 tools)
+### Numbers (33 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -62,21 +62,33 @@ claude mcp add iwork -- npx -y iwork-mcp
 | `numbers_close_document` | Close a document |
 | `numbers_list_sheets` | List sheets in a document |
 | `numbers_add_sheet` | Add a new sheet |
+| `numbers_rename_sheet` | Rename a sheet |
+| `numbers_delete_sheet` | Delete a sheet |
 | `numbers_list_tables` | List tables with dimensions |
 | `numbers_add_table` | Create a new table |
+| `numbers_rename_table` | Rename a table |
+| `numbers_delete_table` | Delete a table |
 | `numbers_read_table` | Read all data as a 2D array |
 | `numbers_read_cell` | Read a single cell |
+| `numbers_read_range` | Read a specific cell range |
 | `numbers_get_table_info` | Get table metadata |
 | `numbers_write_cell` | Write a value to a cell |
 | `numbers_write_cells` | Batch write multiple cells |
+| `numbers_write_table` | Bulk write a 2D array (fast) |
 | `numbers_set_formula` | Set a formula on a cell |
 | `numbers_add_row` | Add rows with optional data |
 | `numbers_add_column` | Add a column |
-| `numbers_format_cells` | Set font, size, color, alignment, background |
+| `numbers_delete_row` | Delete rows |
+| `numbers_delete_column` | Delete columns |
+| `numbers_sort_rows` | Sort table by a column |
+| `numbers_merge_cells` | Merge a cell range |
+| `numbers_unmerge_cells` | Unmerge cells |
+| `numbers_clear_cells` | Clear cell contents |
+| `numbers_format_cells` | Set font, size, color, bold, italic, alignment, background |
 | `numbers_set_column_width` | Set column width |
 | `numbers_set_row_height` | Set row height |
 
-### Pages (13 tools)
+### Pages (15 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -88,13 +100,15 @@ claude mcp add iwork -- npx -y iwork-mcp
 | `pages_close_document` | Close a document |
 | `pages_get_body_text` | Read all body text |
 | `pages_get_paragraphs` | Get paragraphs as indexed array |
-| `pages_add_text` | Append text to body |
-| `pages_replace_text` | Find and replace text |
+| `pages_add_text` | Append text (preserves formatting) |
+| `pages_insert_text_at` | Insert text at a paragraph index |
+| `pages_delete_text` | Delete a paragraph |
+| `pages_replace_text` | Find and replace (preserves formatting) |
 | `pages_format_text` | Set font, size, color, bold, italic on a paragraph |
 | `pages_add_image` | Insert an image |
 | `pages_add_table` | Insert a table |
 
-### Keynote (15 tools)
+### Keynote (22 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -105,7 +119,13 @@ claude mcp add iwork -- npx -y iwork-mcp
 | `keynote_export_presentation` | Export to PDF, PowerPoint, HTML, or images |
 | `keynote_close_presentation` | Close a presentation |
 | `keynote_list_slides` | List slides with titles |
+| `keynote_get_slide_content` | Read all content from a slide |
+| `keynote_list_master_slides` | List available slide layouts |
 | `keynote_add_slide` | Add a slide with optional layout |
+| `keynote_delete_slide` | Delete a slide |
+| `keynote_duplicate_slide` | Duplicate a slide |
+| `keynote_reorder_slide` | Move a slide to a new position |
+| `keynote_skip_slide` | Hide/unhide a slide |
 | `keynote_set_slide_title` | Set slide title text |
 | `keynote_set_slide_body` | Set slide body / bullet points |
 | `keynote_add_image_to_slide` | Add an image to a slide |
@@ -113,6 +133,7 @@ claude mcp add iwork -- npx -y iwork-mcp
 | `keynote_set_presenter_notes` | Set presenter notes |
 | `keynote_set_transition` | Set slide transition effect |
 | `keynote_start_slideshow` | Start playing the presentation |
+| `keynote_stop_slideshow` | Stop the slideshow |
 
 ## How it works
 
