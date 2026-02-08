@@ -16,9 +16,19 @@ Ask Claude to build spreadsheets, write documents, and create presentations — 
 
 49 tools total.
 
-## Setup
+## Install
 
-Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+Paste this into your terminal:
+
+```bash
+open "claude://install-mcp?name=iwork&command=npx&args=-y,iwork-mcp"
+```
+
+That's it. Claude Desktop will restart with iWork tools enabled.
+
+### Manual setup
+
+If the link above doesn't work, open Claude Desktop settings, go to **Developer > Edit Config**, and add:
 
 ```json
 {
@@ -31,13 +41,13 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
 }
 ```
 
-Restart Claude Desktop. The tools will appear automatically.
+Then restart Claude Desktop.
 
 ### Requirements
 
-- macOS (any version with iWork installed — it's free on every Mac)
-- Node.js 18+
-- On first use, macOS will prompt you to grant Automation permission
+- macOS with Numbers, Pages, or Keynote installed (free on every Mac)
+- [Node.js 18+](https://nodejs.org) (`brew install node` if you have Homebrew)
+- On first use, macOS will ask to grant Automation permission — click OK
 
 ## Examples
 
@@ -132,7 +142,7 @@ Numbers.app / Pages.app / Keynote.app
 ## Development
 
 ```bash
-git clone https://github.com/nickarino/iwork-mcp.git
+git clone https://github.com/reichenbach/iwork_mcp.git
 cd iwork-mcp
 npm install
 npm run build
