@@ -8,6 +8,10 @@ One line to install. Works with Claude Desktop, Claude Code, and any MCP client.
 
 Ask Claude to build spreadsheets, write documents, and create presentations — it controls the real iWork apps on your Mac through Apple's JavaScript for Automation (JXA) scripting bridge.
 
+![2026 Calendar in Numbers](screenshots/calendar.png)
+
+![Apple Financial Report in Numbers](screenshots/financial-report.png)
+
 **Numbers** — Create spreadsheets, read/write cells and ranges, set formulas, sort rows, merge cells, format cells (fonts, colors, backgrounds, alignment), manage sheets and tables, set column widths and row heights, bulk-create sheets with data and formatting in one call, export to PDF/Excel/CSV.
 
 **Pages** — Create documents, read and insert text at any position, find and replace (preserves formatting), format paragraphs (font, size, color, bold, italic), insert images and tables, export to PDF/Word/EPUB.
