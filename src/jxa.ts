@@ -37,6 +37,7 @@ function parseErrorCode(stderr: string): number | undefined {
 export interface RunJXAOptions {
   timeout?: number;
   maxBuffer?: number;
+  label?: string;
 }
 
 /**
@@ -53,6 +54,8 @@ export function runJXA<T = unknown>(
 ): Promise<T> {
   const timeout = options?.timeout ?? 30_000;
   const maxBuffer = options?.maxBuffer ?? 10 * 1024 * 1024;
+  const timing = process.env.IWORK_MCP_TIMING === "1";
+  const t0 = timing ? Date.now() : 0;
 
   // Wrap in run(argv) so osascript calls it with our args
   const fullScript = `
@@ -67,8 +70,15 @@ function run(argv) {
     args.push(JSON.stringify(params));
   }
 
+  const label = options?.label ?? "jxa";
+
   return new Promise<T>((resolve, reject) => {
     execFile("/usr/bin/osascript", args, { timeout, maxBuffer }, (error, stdout, stderr) => {
+      if (timing) {
+        const ms = Date.now() - t0;
+        process.stderr.write(`[iwork-mcp] ${label} completed in ${ms}ms\n`);
+      }
+
       if (error) {
         const exitCode = typeof error.code === "number" ? error.code : null;
         reject(new OsascriptError(stderr || error.message, exitCode));

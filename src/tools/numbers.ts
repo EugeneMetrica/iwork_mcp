@@ -1219,4 +1219,88 @@ export function registerNumbersTools(server: McpServer): void {
       deleteDefaultTable: deleteDefaultTable ?? true,
     })),
   );
+
+  // ── Batch Format Tool ──
+
+  server.tool(
+    "numbers_format_range",
+    "Apply multiple formatting rules to different cell ranges in one call. More efficient than calling numbers_format_cells repeatedly.",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      rules: z.array(z.object({
+        cellRange: z.string().regex(/^[A-Z]{1,3}\d+(?::[A-Z]{1,3}\d+)?$/).describe("Cell or range reference, e.g. 'A1' or 'A1:C3'"),
+        bold: z.boolean().optional().describe("Set bold"),
+        italic: z.boolean().optional().describe("Set italic"),
+        fontSize: z.number().positive().optional().describe("Font size in points"),
+        fontName: z.string().optional().describe("Font name (PostScript name)"),
+        textColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().describe("Text color as hex, e.g. '#FF0000'"),
+        backgroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().describe("Background color as hex"),
+        alignment: z.enum(["left", "center", "right", "auto"]).optional().describe("Text alignment"),
+        verticalAlignment: z.enum(["top", "center", "bottom"]).optional().describe("Vertical alignment"),
+        textWrap: z.boolean().optional().describe("Enable text wrapping"),
+        numberFormat: z.enum(["automatic", "number", "currency", "percent", "fraction", "scientific", "text", "checkbox", "star rating"]).optional().describe("Number format"),
+      })).min(1).describe("Array of formatting rules, each targeting a cell range"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+      tableName: z.string().optional().describe("Table name (defaults to first table)"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, rules, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+
+      function hexToRGB(hex) {
+        const r = parseInt(hex.slice(1, 3), 16) * 257;
+        const g = parseInt(hex.slice(3, 5), 16) * 257;
+        const b = parseInt(hex.slice(5, 7), 16) * 257;
+        return [r, g, b];
+      }
+
+      let rulesApplied = 0;
+      let cellsFormatted = 0;
+
+      for (const fmt of params.rules) {
+        const rangeStr = fmt.cellRange;
+        let cells = [];
+        if (rangeStr.includes(":")) {
+          const range = table.ranges[rangeStr];
+          cells = range.cells();
+        } else {
+          cells = [table.cells[rangeStr]];
+        }
+
+        for (const cell of cells) {
+          if (fmt.fontSize !== undefined) cell.fontSize = fmt.fontSize;
+          if (fmt.fontName !== undefined) cell.fontName = fmt.fontName;
+          if (fmt.textColor !== undefined) cell.textColor = hexToRGB(fmt.textColor);
+          if (fmt.backgroundColor !== undefined) cell.backgroundColor = hexToRGB(fmt.backgroundColor);
+          if (fmt.alignment !== undefined) cell.alignment = fmt.alignment;
+          if (fmt.verticalAlignment !== undefined) cell.verticalAlignment = fmt.verticalAlignment;
+          if (fmt.textWrap !== undefined) cell.textWrap = fmt.textWrap;
+          if (fmt.numberFormat !== undefined) cell.format = fmt.numberFormat;
+          if (fmt.bold !== undefined || fmt.italic !== undefined) {
+            let fontName = fmt.fontName || cell.fontName();
+            const baseName = fontName.replace(/[- ]?(Bold ?Italic|BoldItalic|Bold|Italic)$/i, "").trim();
+            const wantBold = fmt.bold !== undefined ? fmt.bold : /Bold/i.test(fontName);
+            const wantItalic = fmt.italic !== undefined ? fmt.italic : /Italic/i.test(fontName);
+            let suffix = "";
+            if (wantBold && wantItalic) suffix = "-BoldItalic";
+            else if (wantBold) suffix = "-Bold";
+            else if (wantItalic) suffix = "-Italic";
+            cell.fontName = baseName + suffix;
+          }
+          cellsFormatted++;
+        }
+        rulesApplied++;
+      }
+
+      return JSON.stringify({ rulesApplied, cellsFormatted });
+    `, {
+      documentName,
+      rules,
+      sheetName: sheetName ?? null,
+      tableName: tableName ?? null,
+    })),
+  );
 }

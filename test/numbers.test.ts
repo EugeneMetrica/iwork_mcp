@@ -365,6 +365,31 @@ describe("Numbers Integration", async () => {
     assert.equal(readResult.value, "persist");
   });
 
+  // ── Batch format range test ──
+
+  it("applies multiple format rules in one call", async () => {
+    const sheet = `FmtRange_${suffix}`;
+    await call(ctx, "numbers_create_sheet_with_table", {
+      documentName: docName,
+      sheetName: sheet,
+      tableName: sheet,
+      data: [["Name", "Score", "Grade"], ["Alice", 95, "A"], ["Bob", 87, "B"]],
+    });
+
+    const { json } = await call(ctx, "numbers_format_range", {
+      documentName: docName,
+      rules: [
+        { cellRange: "A1:C1", bold: true, fontSize: 14, backgroundColor: "#2C3E50", textColor: "#FFFFFF" },
+        { cellRange: "B2:B3", alignment: "right", numberFormat: "number" },
+        { cellRange: "C2:C3", alignment: "center" },
+      ],
+      sheetName: sheet,
+      tableName: sheet,
+    }) as { json: { rulesApplied: number; cellsFormatted: number } };
+    assert.equal(json.rulesApplied, 3);
+    assert.ok(json.cellsFormatted >= 7, `Expected at least 7 cells formatted, got ${json.cellsFormatted}`);
+  });
+
   // ── Error on invalid document ──
 
   it("returns isError for a nonexistent document", async () => {
