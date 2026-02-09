@@ -78,6 +78,9 @@ export function registerPagesTools(server: McpServer): void {
       const doc = app.documents.byName(params.documentName);
       if (params.filePath) {
         doc.save({ in: Path(params.filePath) });
+        doc.close({ saving: "no" });
+        const newDoc = app.open(Path(params.filePath));
+        return JSON.stringify({ saved: true, name: newDoc.name() });
       } else {
         doc.save();
       }
