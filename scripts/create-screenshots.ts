@@ -383,7 +383,7 @@ async function createResume(client: Client) {
     // Header
     { text: "SARAH CHEN", fontSize: 28, fontName: "HelveticaNeue-Bold", textColor: dark },
     { text: "Senior Product Manager", fontSize: 13, fontName: "HelveticaNeue", textColor: accent },
-    { text: "San Francisco, CA  |  sarah.chen@email.com  |  (415) 555-0142  |  linkedin.com/in/sarahchen", fontSize: 9.5, fontName: "HelveticaNeue", textColor: grey },
+    { text: "San Francisco, CA  |  sarah.chen@email.com  |  555-555-5555  |  linkedin.com/in/sample-profile", fontSize: 9.5, fontName: "HelveticaNeue", textColor: grey },
 
     divider(),
 
