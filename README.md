@@ -218,7 +218,7 @@ To test locally with Claude Desktop, point to your local build:
 
 - **macOS only** — requires Numbers, Pages, and Keynote 14.0+ (free from the App Store)
 - **Apps are visible** — iWork apps launch and show windows; there's no headless mode
-- **~430ms per call** — osascript startup overhead per tool invocation (use bulk tools like `create_sheet_with_table` and `create_document_with_content` for speed)
+- **~430ms per call** — osascript startup overhead per tool invocation (use compound tools like `create_sheet_with_table`, `create_document_with_content`, and `create_presentation_with_slides` for speed)
 - **No charts** — Apple's scripting dictionary can create empty chart objects but has no API to bind data to them; add charts manually in Numbers (select data → Insert → Chart)
 - **Formulas are write-only** — Apple's scripting dictionary returns computed values, not formula text
 - **No comments or track changes** — not exposed in the scripting dictionary
