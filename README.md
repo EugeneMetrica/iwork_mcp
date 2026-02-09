@@ -217,6 +217,8 @@ To test locally with Claude Desktop, point to your local build:
 
 ## Limitations
 
+iWork's scripting dictionary defines what's automatable — some features (charts, track changes, comments) simply aren't exposed by Apple. iwork-mcp covers everything the API allows. We're hopeful Apple expands automation capabilities as AI tooling becomes more integrated across the ecosystem.
+
 - **macOS only** — requires Numbers, Pages, and Keynote 14.0+ (free from the App Store)
 - **Apps are visible** — iWork apps launch and show windows; there's no headless mode
 - **~430ms per call** — osascript startup overhead per tool invocation (use compound tools like `create_sheet_with_table`, `create_document_with_content`, and `create_presentation_with_slides` for speed)
