@@ -1,6 +1,6 @@
 # iwork-mcp
 
-MCP server for Apple iWork automation — 77 tools for Numbers, Pages, and Keynote.
+MCP server for Apple iWork automation — 78 tools for Numbers, Pages, and Keynote.
 
 One line to install. Works with Claude Desktop, Claude Code, Codex, and any MCP client.
 
@@ -74,7 +74,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 
 ## Tools
 
-### Numbers (38 tools)
+### Numbers (39 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -115,6 +115,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `numbers_format_cells` | Set font, size, color, bold, italic, alignment, background, number format (percent, currency, etc.) |
 | `numbers_set_column_width` | Set column width |
 | `numbers_set_row_height` | Set row height |
+| `numbers_format_range` | Apply multiple formatting rules to different cell ranges in one call |
 | `numbers_create_sheet_with_table` | Create a full sheet with table, data, and formatting in one fast call |
 
 ### Pages (16 tools)
