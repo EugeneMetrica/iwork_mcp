@@ -339,7 +339,8 @@ export function registerKeynoteTools(server: McpServer): void {
         }
       }
 
-      return JSON.stringify({ slideNumber: doc.slides.length, added: true });
+      const insertedAt = (params.afterSlide !== null && params.afterSlide !== undefined) ? params.afterSlide + 1 : doc.slides.length;
+      return JSON.stringify({ slideNumber: insertedAt, added: true });
     `, { documentName, masterSlideName: masterSlideName ?? null, afterSlide: afterSlide ?? null })),
   );
 
@@ -411,14 +412,13 @@ export function registerKeynoteTools(server: McpServer): void {
     {
       documentName: z.string().describe("Name of the open presentation"),
       slideNumber: z.number().describe("Slide number (1-based)"),
-      shapeType: z.string().optional().describe("Shape type (e.g. 'rectangle', 'circle', 'rounded rectangle')"),
       text: z.string().optional().describe("Text content for the shape"),
       x: z.number().optional().describe("X position in points"),
       y: z.number().optional().describe("Y position in points"),
       width: z.number().optional().describe("Width in points (default: 200)"),
       height: z.number().optional().describe("Height in points (default: 100)"),
     },
-    async ({ documentName, slideNumber, shapeType, text, x, y, width, height }) => handleJXA(() => runJXA<string>(`
+    async ({ documentName, slideNumber, text, x, y, width, height }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);
       const slide = doc.slides[params.slideNumber - 1];
@@ -432,7 +432,7 @@ export function registerKeynoteTools(server: McpServer): void {
         shape.objectText = params.text;
       }
       return JSON.stringify({ added: true, slideNumber: params.slideNumber });
-    `, { documentName, slideNumber, shapeType: shapeType ?? null, text: text ?? null, x: x ?? null, y: y ?? null, width: width ?? 200, height: height ?? 100 })),
+    `, { documentName, slideNumber, text: text ?? null, x: x ?? null, y: y ?? null, width: width ?? 200, height: height ?? 100 })),
   );
 
   server.tool(

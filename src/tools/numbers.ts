@@ -481,7 +481,7 @@ export function registerNumbersTools(server: McpServer): void {
     "Bulk write an entire table of data in a single operation. Much faster than writing cells individually. Resizes the table to fit the data automatically.",
     {
       documentName: z.string().describe("Name of the open document"),
-      data: z.array(z.array(z.union([z.string(), z.number(), z.boolean(), z.null()])))
+      data: z.array(z.array(z.union([z.string(), z.number(), z.boolean(), z.null()]))).min(1)
         .describe("2D array of data — first row can be headers. Null cells are skipped."),
       startCell: z.string().optional().describe("Top-left cell to start writing from (default: 'A1')"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
@@ -576,14 +576,27 @@ export function registerNumbersTools(server: McpServer): void {
 
       const rowsToAdd = params.data ? params.data.length : 1;
       const colCount = table.columnCount();
-      const pos = params.position === "beginning" ? 0 : table.rowCount();
+      const existingRows = table.rowCount();
 
       for (let i = 0; i < rowsToAdd; i++) {
         table.rows.push(app.Row());
       }
 
+      if (params.position === "beginning" && existingRows > 0) {
+        // Shift existing data down to make room at the top
+        for (let r = existingRows - 1; r >= 0; r--) {
+          for (let c = 0; c < colCount; c++) {
+            const val = table.cells[r * colCount + c].value();
+            table.cells[(r + rowsToAdd) * colCount + c].value = val;
+            if (val !== null && val !== undefined && val !== "") {
+              table.cells[r * colCount + c].value = null;
+            }
+          }
+        }
+      }
+
       if (params.data) {
-        const startRow = pos;
+        const startRow = params.position === "beginning" ? 0 : existingRows;
         for (let r = 0; r < params.data.length; r++) {
           for (let c = 0; c < Math.min(params.data[r].length, colCount); c++) {
             if (params.data[r][c] !== null) {
@@ -924,7 +937,7 @@ export function registerNumbersTools(server: McpServer): void {
       documentName: z.string().describe("Name of the open document"),
       sheetName: z.string().describe("Name for the new sheet"),
       tableName: z.string().optional().describe("Name for the table (default: same as sheet name)"),
-      data: z.array(z.array(z.union([z.string(), z.number(), z.boolean(), z.null()])))
+      data: z.array(z.array(z.union([z.string(), z.number(), z.boolean(), z.null()]))).min(1)
         .describe("2D array of table data. First row can be headers."),
       headerRowCount: z.number().optional().describe("Number of header rows (default: 0 for no header styling)"),
       columnWidths: z.array(z.number()).optional().describe("Width in points for each column"),
