@@ -34,20 +34,22 @@ export function install(): void {
 
   const servers = config.mcpServers as Record<string, unknown>;
 
-  // Check if already installed
-  if (servers.iwork) {
+  // Check if already installed and valid
+  const existing = servers.iwork as Record<string, unknown> | undefined;
+  if (existing && existing.command === iworkEntry.command &&
+      JSON.stringify(existing.args) === JSON.stringify(iworkEntry.args)) {
     console.log("iwork-mcp is already installed in Claude Desktop.");
     console.log("Restart Claude Desktop (Cmd+Q, reopen) if it's not showing up.");
     return;
   }
 
-  // Add iwork entry
+  const wasPresent = !!existing;
   servers.iwork = iworkEntry;
 
   // Write config
   writeFileSync(configPath, JSON.stringify(config, null, 2) + "\n");
 
-  console.log("\niwork-mcp installed successfully!\n");
+  console.log(wasPresent ? "\niwork-mcp config repaired!\n" : "\niwork-mcp installed successfully!\n");
   console.log("Make sure Numbers, Pages, and Keynote are installed (free from the App Store).");
   console.log("Restart Claude Desktop to activate (Cmd+Q, then reopen).");
   console.log("74 tools for Numbers, Pages, and Keynote — ready to go.");
