@@ -238,10 +238,19 @@ export function registerKeynoteTools(server: McpServer): void {
       documentName: z.string().describe("Name of the open presentation"),
     },
     async ({ documentName }) => handleJXA(() => runJXA<string>(`
-      const app = Application("Keynote");
-      const doc = app.documents.byName(params.documentName);
-      const masters = doc.masterSlides();
-      return JSON.stringify(masters.map((m, i) => ({ index: i, name: m.name() })));
+      ObjC.import("Foundation");
+      const script = $.NSAppleScript.alloc.initWithSource(
+        'tell application "Keynote" to tell document "' + params.documentName.replace(/"/g, '\\\\"') + '" to return name of every master slide'
+      );
+      const errDict = Ref();
+      const result = script.executeAndReturnError(errDict);
+      if (!result) throw new Error("Failed to list master slides");
+      const count = result.numberOfItems;
+      const names = [];
+      for (let i = 1; i <= count; i++) {
+        names.push({ index: i - 1, name: result.descriptorAtIndex(i).stringValue.js });
+      }
+      return JSON.stringify(names);
     `, { documentName })),
   );
 
@@ -303,17 +312,31 @@ export function registerKeynoteTools(server: McpServer): void {
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);
 
-      const props = {};
       if (params.masterSlideName) {
-        props.baseSlide = doc.masterSlides.byName(params.masterSlideName);
-      }
-
-      const slide = app.Slide(props);
-
-      if (params.afterSlide !== null && params.afterSlide !== undefined) {
-        doc.slides.splice(params.afterSlide, 0, slide);
+        // JXA masterSlides bridge is broken — use AppleScript via ObjC
+        ObjC.import("Foundation");
+        const docName = params.documentName.replace(/"/g, '\\\\"');
+        const masterName = params.masterSlideName.replace(/"/g, '\\\\"');
+        let asCode;
+        if (params.afterSlide !== null && params.afterSlide !== undefined) {
+          asCode = 'tell application "Keynote" to tell document "' + docName + '" to make new slide after slide ' + params.afterSlide + ' with properties {base slide:master slide "' + masterName + '"}';
+        } else {
+          asCode = 'tell application "Keynote" to tell document "' + docName + '" to make new slide with properties {base slide:master slide "' + masterName + '"}';
+        }
+        const script = $.NSAppleScript.alloc.initWithSource(asCode);
+        const errDict = Ref();
+        const result = script.executeAndReturnError(errDict);
+        if (!result) {
+          const errInfo = ObjC.deepUnwrap(errDict[0]);
+          throw new Error(errInfo.NSAppleScriptErrorBriefMessage || "Failed to add slide");
+        }
       } else {
-        doc.slides.push(slide);
+        const slide = app.Slide({});
+        if (params.afterSlide !== null && params.afterSlide !== undefined) {
+          doc.slides.splice(params.afterSlide, 0, slide);
+        } else {
+          doc.slides.push(slide);
+        }
       }
 
       return JSON.stringify({ slideNumber: doc.slides.length, added: true });

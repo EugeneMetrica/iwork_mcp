@@ -1,7 +1,7 @@
 {
   "name": "iwork-mcp",
   "version": "0.5.5",
-  "description": "MCP server for Apple iWork (Numbers, Pages, Keynote) automation",
+  "description": "MCP server for Apple iWork automation — 74 tools for Numbers, Pages, and Keynote",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -15,7 +15,10 @@
   "scripts": {
     "build": "tsc && chmod +x dist/index.js",
     "dev": "tsc --watch",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "test": "node --import tsx --test test/registration.test.ts test/jxa.test.ts",
+    "test:integration": "node --import tsx --test test/numbers.test.ts test/pages.test.ts test/keynote.test.ts",
+    "test:all": "node --import tsx --test test/**/*.test.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
@@ -23,9 +26,23 @@
   },
   "devDependencies": {
     "@types/node": "^22",
+    "tsx": "^4.21.0",
     "typescript": "^5.8.0"
   },
   "engines": {
     "node": ">=18"
-  }
+  },
+  "keywords": [
+    "mcp",
+    "iwork",
+    "numbers",
+    "pages",
+    "keynote",
+    "apple",
+    "jxa",
+    "automation",
+    "spreadsheet",
+    "presentation",
+    "claude"
+  ]
 }

@@ -417,18 +417,26 @@ export function registerPagesTools(server: McpServer): void {
       doc.bodyText = fullText;
 
       // Format each paragraph via bodyText.paragraphs
+      // A single input paragraph with \\n creates multiple Pages paragraphs,
+      // so we track the real index offset and apply formatting to all sub-paragraphs.
+      let paraIdx = 0;
       for (let i = 0; i < params.paragraphs.length; i++) {
         const p = params.paragraphs[i];
-        const para = doc.bodyText.paragraphs[i];
-        if (p.fontSize !== undefined) para.size = p.fontSize;
-        if (p.fontName !== undefined) para.font = p.fontName;
+        const nlCount = (p.text.match(/\\n/g) || []).length;
+        let r, g, b;
         if (p.textColor !== undefined) {
           const hex = p.textColor;
-          const r = parseInt(hex.slice(1, 3), 16) * 257;
-          const g = parseInt(hex.slice(3, 5), 16) * 257;
-          const b = parseInt(hex.slice(5, 7), 16) * 257;
-          para.color = [r, g, b];
+          r = parseInt(hex.slice(1, 3), 16) * 257;
+          g = parseInt(hex.slice(3, 5), 16) * 257;
+          b = parseInt(hex.slice(5, 7), 16) * 257;
         }
+        for (let j = 0; j <= nlCount; j++) {
+          const para = doc.bodyText.paragraphs[paraIdx + j];
+          if (p.fontSize !== undefined) para.size = p.fontSize;
+          if (p.fontName !== undefined) para.font = p.fontName;
+          if (r !== undefined) para.color = [r, g, b];
+        }
+        paraIdx += nlCount + 1;
       }
 
       if (params.filePath) {

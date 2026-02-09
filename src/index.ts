@@ -13,11 +13,12 @@ if (process.argv[2] === "install") {
   const { registerNumbersTools } = await import("./tools/numbers.js");
   const { registerPagesTools } = await import("./tools/pages.js");
   const { registerKeynoteTools } = await import("./tools/keynote.js");
+  const { INSTRUCTIONS } = await import("./instructions.js");
 
-  const server = new McpServer({
-    name: "iwork-mcp",
-    version,
-  });
+  const server = new McpServer(
+    { name: "iwork-mcp", version },
+    { instructions: INSTRUCTIONS },
+  );
 
   registerNumbersTools(server);
   registerPagesTools(server);

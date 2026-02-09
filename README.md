@@ -1,6 +1,6 @@
 # iwork-mcp
 
-MCP server for Apple iWork automation — 73 tools for Numbers, Pages, and Keynote.
+MCP server for Apple iWork automation — 74 tools for Numbers, Pages, and Keynote.
 
 One line to install. Works with Claude Desktop, Claude Code, and any MCP client.
 
@@ -8,15 +8,26 @@ One line to install. Works with Claude Desktop, Claude Code, and any MCP client.
 
 Ask Claude to build spreadsheets, write documents, and create presentations — it controls the real iWork apps on your Mac through Apple's JavaScript for Automation (JXA) scripting bridge.
 
-![2026 Calendar in Numbers](screenshots/calendar.png)
+![Monthly Budget in Numbers](screenshots/budget.jpg)
 
-![Apple Financial Report in Numbers](screenshots/financial-report.png)
+![Professional Resume in Pages](screenshots/resume.jpg)
 
-**Numbers** — Create spreadsheets, read/write cells and ranges, set formulas, sort rows, merge cells, format cells (fonts, colors, backgrounds, alignment), manage sheets and tables, set column widths and row heights, bulk-create sheets with data and formatting in one call, export to PDF/Excel/CSV.
+![Q4 Business Review in Keynote](screenshots/pitch.jpg)
 
-**Pages** — Create documents, read and insert text at any position, find and replace (preserves formatting), format paragraphs (font, size, color, bold, italic), insert images and tables, export to PDF/Word/EPUB.
+**Numbers** — Create spreadsheets, read/write cells and ranges, set formulas (including cross-sheet references like SUMIFS), sort rows, merge cells, format cells (fonts, colors, backgrounds, alignment, number formats like percent and currency), manage sheets and tables, set column widths and row heights, bulk-create sheets with data and formatting in one call, export to PDF/Excel/CSV.
 
-**Keynote** — Create presentations, add/delete/duplicate/reorder/skip slides, read slide content, set titles and bullet points, add images and shapes, set transitions and presenter notes, list master slide layouts, start/stop slideshows, export to PDF/PowerPoint/HTML.
+**Pages** — Create documents with formatted content in one call, read and insert text at any position, find and replace (preserves formatting), format paragraphs (font, size, color), insert images and tables, export to PDF/Word/EPUB.
+
+**Keynote** — Create presentations with theme selection, add/delete/duplicate/reorder/skip slides, choose slide layouts from master slides, read slide content, set titles and bullet points, add images and shapes, set transitions and presenter notes, start/stop slideshows, export to PDF/PowerPoint/HTML.
+
+<details>
+<summary>More examples</summary>
+
+![2026 Calendar in Numbers](screenshots/calendar.jpg)
+
+![Apple Financial Report in Numbers](screenshots/financial-report.jpg)
+
+</details>
 
 ## Install
 
@@ -36,19 +47,22 @@ claude mcp add iwork -- npx -y iwork-mcp
 
 ### Requirements
 
-- macOS with Numbers, Pages, and Keynote installed (free from the App Store)
+- **macOS 13 Ventura or later** (tested on macOS 14 Sonoma)
+- **Numbers, Pages, and Keynote 14.0+** (tested on 14.5; free from the App Store)
 - [Node.js 18+](https://nodejs.org) (`brew install node` if you have Homebrew)
 - On first use, macOS will ask to grant Automation permission — click OK
 
+> **iWork 15.1+ (Creator Studio)**: The new Creator Studio versions (January 2026) have different app bundles and bundle IDs. Compatibility is untested — if you encounter issues, use the classic 14.x versions from the Mac App Store.
+
 ## Examples
 
-> Create a new Numbers spreadsheet with columns Name, Age, and City. Add 5 rows of sample data and a SUM formula for the ages.
+> Build a monthly budget spreadsheet in Numbers with income, expenses, and a net savings row. Color positive differences green and negative red.
+
+> Create a professional resume in Pages for a software engineer with experience at three companies, education, and skills sections.
+
+> Make a Keynote presentation for a Q4 business review with 6 slides — highlights, revenue, product milestones, and roadmap. Add presenter notes on every slide.
 
 > Open my budget spreadsheet at ~/Documents/budget.numbers and add a new row for February.
-
-> Create a Keynote presentation about renewable energy with 6 slides. Each slide should have a title and 3-4 bullet points.
-
-> Make a Pages document with a project proposal. Include a title, three sections with headers, and export it as a PDF to my Desktop.
 
 > Create a 2026 calendar in Numbers with a sheet for each month, colored headers, and weekend highlighting.
 
@@ -90,12 +104,12 @@ claude mcp add iwork -- npx -y iwork-mcp
 | `numbers_merge_cells` | Merge a cell range |
 | `numbers_unmerge_cells` | Unmerge cells |
 | `numbers_clear_cells` | Clear cell contents |
-| `numbers_format_cells` | Set font, size, color, bold, italic, alignment, background |
+| `numbers_format_cells` | Set font, size, color, bold, italic, alignment, background, number format (percent, currency, etc.) |
 | `numbers_set_column_width` | Set column width |
 | `numbers_set_row_height` | Set row height |
 | `numbers_create_sheet_with_table` | Create a full sheet with table, data, and formatting in one fast call |
 
-### Pages (15 tools)
+### Pages (16 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -114,6 +128,7 @@ claude mcp add iwork -- npx -y iwork-mcp
 | `pages_format_text` | Set font, size, color, bold, italic on a paragraph |
 | `pages_add_image` | Insert an image |
 | `pages_add_table` | Insert a table |
+| `pages_create_document_with_content` | Create a document with multiple formatted paragraphs in one fast call |
 
 ### Keynote (22 tools)
 
@@ -165,6 +180,18 @@ npm install
 npm run build
 ```
 
+### Testing
+
+```bash
+npm test              # Unit tests — tool registration + error parsing (~300ms, no apps needed)
+npm run test:integration  # Integration tests — Numbers/Pages/Keynote CRUD (~6s, requires iWork apps)
+npm run test:all      # Both tiers combined
+```
+
+Tests use `node:test` with in-memory MCP transport (no subprocess). Integration tests skip automatically if the corresponding app isn't installed.
+
+### Local development with Claude Desktop
+
 To test locally with Claude Desktop, point to your local build:
 
 ```json
@@ -180,12 +207,13 @@ To test locally with Claude Desktop, point to your local build:
 
 ## Limitations
 
-- **macOS only** — requires Numbers, Pages, and Keynote (free from the App Store)
+- **macOS only** — requires Numbers, Pages, and Keynote 14.0+ (free from the App Store)
 - **Apps are visible** — iWork apps launch and show windows; there's no headless mode
-- **~430ms per call** — osascript startup overhead per tool invocation (use bulk tools like `create_sheet_with_table` for speed)
+- **~430ms per call** — osascript startup overhead per tool invocation (use bulk tools like `create_sheet_with_table` and `create_document_with_content` for speed)
 - **No charts** — Apple's scripting dictionary can create empty chart objects but has no API to bind data to them; add charts manually in Numbers (select data → Insert → Chart)
 - **Formulas are write-only** — Apple's scripting dictionary returns computed values, not formula text
 - **No comments or track changes** — not exposed in the scripting dictionary
+- **Pages formatting** — paragraph formatting uses `bodyText.paragraphs` which supports font, size, and color; bold/italic require PostScript font names (e.g. `HelveticaNeue-Bold`); there is no direct bold/italic toggle
 - **First-use permission prompt** — macOS will ask to grant Automation access once
 
 ## License

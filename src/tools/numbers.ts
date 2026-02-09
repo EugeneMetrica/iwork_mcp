@@ -799,6 +799,7 @@ export function registerNumbersTools(server: McpServer): void {
         alignment: z.enum(["left", "center", "right", "auto"]).optional().describe("Text alignment"),
         verticalAlignment: z.enum(["top", "center", "bottom"]).optional().describe("Vertical alignment"),
         textWrap: z.boolean().optional().describe("Enable text wrapping"),
+        numberFormat: z.enum(["automatic", "number", "currency", "percent", "fraction", "scientific", "text", "checkbox", "star rating"]).optional().describe("Number format for the cell"),
       }).describe("Formatting options"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
@@ -843,6 +844,9 @@ export function registerNumbersTools(server: McpServer): void {
         }
         if (fmt.textWrap !== undefined) {
           cell.textWrap = fmt.textWrap;
+        }
+        if (fmt.numberFormat !== undefined) {
+          cell.format = fmt.numberFormat;
         }
         // Bold/italic: switch font to bold/italic variant (PostScript names)
         if (fmt.bold !== undefined || fmt.italic !== undefined) {
