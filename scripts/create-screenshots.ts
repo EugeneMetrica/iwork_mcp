@@ -358,38 +358,46 @@ async function createBudget(client: Client) {
 async function createResume(client: Client) {
   console.log("Creating Pages resume...");
 
+  // Color system — teal accent like the AI-generated resumes
+  const accent = "#1B7F79";
   const dark = "#1A1A1A";
-  const accent = "#2C3E50";
-  const grey = "#555555";
-  const body = "#333333";
-  const dividerColor = "#AAAAAA";
-  const rule = "\u2500".repeat(80);
+  const grey = "#666666";
+  const body = "#2D2D2D";
+  const rule = "\u2500".repeat(85);
 
-  // Helper: each bullet is its own paragraph to avoid \n index shifting
+  // Helpers — each paragraph is its own entry to avoid index shifting
   const bullet = (text: string) =>
-    ({ text: `\u2022  ${text}`, fontSize: 11, fontName: "HelveticaNeue", textColor: body });
+    ({ text: `\u2022  ${text}`, fontSize: 10.5, fontName: "HelveticaNeue", textColor: body });
   const divider = () =>
-    ({ text: rule, fontSize: 7, fontName: "HelveticaNeue-Light", textColor: dividerColor });
+    ({ text: rule, fontSize: 6, fontName: "HelveticaNeue-Light", textColor: "#BBBBBB" });
   const section = (text: string) =>
-    ({ text, fontSize: 12, fontName: "HelveticaNeue-Bold", textColor: accent });
-  const jobTitle = (title: string, company: string) =>
-    ({ text: `${title}  \u2014  ${company}`, fontSize: 12, fontName: "HelveticaNeue-Bold", textColor: dark });
-  const jobDate = (text: string) =>
-    ({ text, fontSize: 10, fontName: "HelveticaNeue-Italic", textColor: grey });
+    ({ text, fontSize: 11.5, fontName: "HelveticaNeue-Bold", textColor: accent });
+  const jobHeader = (title: string, company: string, date: string) =>
+    ({ text: `${title}  |  ${company}  |  ${date}`, fontSize: 10.5, fontName: "HelveticaNeue-Bold", textColor: dark });
   const spacer = () =>
-    ({ text: " ", fontSize: 6, fontName: "Helvetica" as const, textColor: body });
+    ({ text: " ", fontSize: 5, fontName: "Helvetica" as const, textColor: body });
+  const skillRow = (label: string, skills: string) =>
+    ({ text: `${label}:  ${skills}`, fontSize: 10.5, fontName: "HelveticaNeue", textColor: body });
 
   const paragraphs = [
     // Header
-    { text: "SARAH CHEN", fontSize: 28, fontName: "HelveticaNeue-Bold", textColor: accent },
-    { text: "Senior Product Manager", fontSize: 14, fontName: "HelveticaNeue-Light", textColor: grey },
-    { text: "San Francisco, CA  |  sarah.chen@email.com  |  (415) 555-0142  |  linkedin.com/in/sarahchen", fontSize: 10.5, fontName: "HelveticaNeue", textColor: grey },
+    { text: "SARAH CHEN", fontSize: 28, fontName: "HelveticaNeue-Bold", textColor: dark },
+    { text: "Senior Product Manager", fontSize: 13, fontName: "HelveticaNeue", textColor: accent },
+    { text: "San Francisco, CA  |  sarah.chen@email.com  |  (415) 555-0142  |  linkedin.com/in/sarahchen", fontSize: 9.5, fontName: "HelveticaNeue", textColor: grey },
 
     divider(),
 
-    // Profile
-    section("PROFILE"),
-    { text: "Product leader with 6+ years shipping consumer and enterprise products at scale. Track record of driving revenue growth through data-informed strategy, cross-functional leadership, and rapid experimentation. Passionate about turning complex technical capabilities into intuitive user experiences.", fontSize: 11, fontName: "HelveticaNeue", textColor: body },
+    // Professional Summary
+    section("PROFESSIONAL SUMMARY"),
+    { text: "Product leader with 6+ years shipping consumer and enterprise products at scale. Track record of driving $12M+ in measurable revenue impact through data-informed strategy, cross-functional leadership, and rapid experimentation. Experienced in payments, marketplace, and productivity domains.", fontSize: 10.5, fontName: "HelveticaNeue", textColor: body },
+
+    divider(),
+
+    // Technical Skills — categorized like the AI resumes
+    section("TECHNICAL SKILLS"),
+    skillRow("Analytics", "SQL, Python, Amplitude, Tableau, Mixpanel, Looker"),
+    skillRow("Product", "A/B Testing, User Research, Figma, Jira, Linear, Technical Specifications"),
+    skillRow("Frameworks", "Agile/Scrum, OKRs, RICE Scoring, Jobs-to-be-Done, Double Diamond"),
 
     divider(),
 
@@ -397,8 +405,7 @@ async function createResume(client: Client) {
     section("EXPERIENCE"),
 
     // Job 1: Stripe
-    jobTitle("Senior Product Manager", "Stripe"),
-    jobDate("January 2024 \u2013 Present  |  San Francisco, CA"),
+    jobHeader("Senior Product Manager", "Stripe", "Jan 2024 \u2013 Present"),
     bullet("Redesigned payment retry engine, reducing failed transactions 18% and recovering $12M ARR"),
     bullet("Launched fraud scoring API handling 50K req/s at p99 < 15ms, blocking $3.2M in fraud Q1"),
     bullet("Led cross-functional team of 8 engineers, 2 designers, and 1 data scientist"),
@@ -407,41 +414,42 @@ async function createResume(client: Client) {
     spacer(),
 
     // Job 2: Airbnb
-    jobTitle("Product Manager", "Airbnb"),
-    jobDate("June 2021 \u2013 December 2023  |  San Francisco, CA"),
+    jobHeader("Product Manager", "Airbnb", "Jun 2021 \u2013 Dec 2023"),
     bullet("Owned dynamic pricing engine, increasing host revenue 23% across 2M+ listings globally"),
     bullet("Shipped redesigned search experience, lifting conversion from 3.2% to 4.1% (+28%)"),
     bullet("Defined and tracked 12 KPIs for growth team; presented monthly reviews to VP Product"),
-    bullet("Drove localization strategy for APAC markets, contributing to 15% international booking growth"),
+    bullet("Drove APAC localization strategy, contributing to 15% international booking growth"),
 
     spacer(),
 
     // Job 3: Notion
-    jobTitle("Associate Product Manager", "Notion"),
-    jobDate("August 2019 \u2013 May 2021  |  San Francisco, CA"),
+    jobHeader("Associate Product Manager", "Notion", "Aug 2019 \u2013 May 2021"),
     bullet("Built template gallery adopted by 500K+ workspaces in first year of launch"),
     bullet("Reduced average page load time from 320ms to 85ms through query optimization"),
     bullet("Conducted 40+ user interviews informing collaborative editing roadmap and API strategy"),
-    bullet("Partnered with design to ship inline commenting feature, increasing DAU engagement 12%"),
+    bullet("Partnered with design to ship inline commenting, increasing DAU engagement 12%"),
+
+    divider(),
+
+    // Projects
+    section("PROJECTS"),
+    { text: "Open Source Metrics Dashboard", fontSize: 10.5, fontName: "HelveticaNeue-Bold", textColor: dark },
+    bullet("Built a real-time product analytics dashboard used by 2K+ developers on GitHub"),
+    { text: "Stripe Developer Experience Research", fontSize: 10.5, fontName: "HelveticaNeue-Bold", textColor: dark },
+    bullet("Published internal research paper on API usability that informed Stripe Docs v3 redesign"),
 
     divider(),
 
     // Education
     section("EDUCATION"),
-    { text: "University of California, Berkeley  \u2014  B.S. Computer Science, 2019", fontSize: 11, fontName: "HelveticaNeue-Bold", textColor: dark },
-    { text: "Dean's List (6 semesters)  |  Teaching Assistant, CS 162 Operating Systems  |  GPA: 3.8/4.0", fontSize: 10.5, fontName: "HelveticaNeue", textColor: grey },
-
-    divider(),
-
-    // Skills
-    section("SKILLS"),
-    { text: "Product Strategy  \u2022  A/B Testing  \u2022  SQL & Python  \u2022  Figma  \u2022  Amplitude  \u2022  Tableau  \u2022  Agile/Scrum  \u2022  User Research  \u2022  Jira  \u2022  Technical Specifications  \u2022  Stakeholder Management", fontSize: 11, fontName: "HelveticaNeue", textColor: body },
+    { text: "B.S. Computer Science  |  University of California, Berkeley  |  2019", fontSize: 10.5, fontName: "HelveticaNeue-Bold", textColor: dark },
+    { text: "Dean's List (6 semesters)  \u2022  TA, CS 162 Operating Systems  \u2022  GPA 3.8", fontSize: 10, fontName: "HelveticaNeue", textColor: grey },
 
     divider(),
 
     // Certifications
     section("CERTIFICATIONS"),
-    { text: "Pragmatic Institute Certified (PMC-III)  |  Google Analytics Certified  |  Certified Scrum Product Owner (CSPO)", fontSize: 11, fontName: "HelveticaNeue", textColor: body },
+    { text: "Pragmatic Institute PMC-III  \u2022  Google Analytics Certified  \u2022  Certified Scrum Product Owner (CSPO)", fontSize: 10, fontName: "HelveticaNeue", textColor: grey },
   ];
 
   const doc = await call(client, "pages_create_document_with_content", { paragraphs });
