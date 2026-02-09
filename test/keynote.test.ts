@@ -195,6 +195,48 @@ describe("Keynote Integration", async () => {
     assert.equal(result.isError, true);
   });
 
+  // ── Compound tool ──
+
+  it("creates a presentation with multiple slides in one call", async () => {
+    const { json } = await call(ctx, "keynote_create_presentation_with_slides", {
+      slides: [
+        {
+          title: "Welcome",
+          body: "First slide body",
+          presenterNotes: "Greet the audience",
+          transition: { effect: "dissolve", duration: 1.5 },
+        },
+        {
+          title: "Agenda",
+          body: "Item 1\nItem 2\nItem 3",
+          presenterNotes: "Walk through agenda",
+        },
+      ],
+    });
+    const compoundDocName = json.name;
+    assert.ok(compoundDocName);
+    assert.equal(json.slideCount, 2);
+    assert.equal(json.slides.length, 2);
+    assert.equal(json.slides[0].slideNumber, 1);
+    assert.equal(json.slides[0].title, "Welcome");
+    assert.ok(json.slides[0].hasNotes);
+    assert.equal(json.slides[1].slideNumber, 2);
+    assert.equal(json.slides[1].title, "Agenda");
+    assert.ok(json.slides[1].hasBody);
+    assert.ok(json.slides[1].hasNotes);
+
+    // Verify via get_slide_content
+    const { json: slide1 } = await call(ctx, "keynote_get_slide_content", {
+      documentName: compoundDocName,
+      slideNumber: 1,
+    });
+    assert.equal(slide1.title, "Welcome");
+    assert.equal(slide1.presenterNotes, "Greet the audience");
+
+    // Clean up
+    await call(ctx, "keynote_close_presentation", { documentName: compoundDocName, saving: "no" });
+  });
+
   it("closes the presentation without saving", async () => {
     const { json } = await call(ctx, "keynote_close_presentation", {
       documentName: docName,

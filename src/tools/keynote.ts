@@ -516,4 +516,118 @@ export function registerKeynoteTools(server: McpServer): void {
       return JSON.stringify({ playing: true });
     `, { documentName, fromSlide: fromSlide ?? null })),
   );
+
+  // ── Compound Tool ──
+
+  server.tool(
+    "keynote_create_presentation_with_slides",
+    "Create a Keynote presentation with multiple fully-configured slides in one call (theme, layout, title, body, notes, transitions)",
+    {
+      themeName: z.string().optional().describe("Theme name (e.g. 'White', 'Black', 'Gradient')"),
+      slides: z.array(z.object({
+        masterSlideName: z.string().optional().describe("Master slide layout (e.g. 'Title & Subtitle', 'Bullets', 'Blank')"),
+        title: z.string().optional().describe("Slide title text"),
+        body: z.string().optional().describe("Slide body text (use newlines for bullet points)"),
+        presenterNotes: z.string().optional().describe("Presenter notes"),
+        transition: z.object({
+          effect: z.string().describe("Transition effect (e.g. 'dissolve', 'push', 'wipe', 'none')"),
+          duration: z.number().positive().optional().describe("Duration in seconds"),
+        }).optional().describe("Slide transition"),
+      })).min(1).describe("Array of slides to create"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ themeName, slides }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Keynote");
+
+      // Create presentation
+      let doc;
+      if (params.themeName) {
+        doc = app.Document({ documentTheme: app.themes[params.themeName] });
+        app.documents.push(doc);
+      } else {
+        doc = app.Document();
+        app.documents.push(doc);
+      }
+
+      ObjC.import("Foundation");
+      const docName = doc.name().replace(/"/g, '\\\\"');
+      const results = [];
+
+      // New presentations always have 1 auto-generated slide.
+      // Reuse it for the first user slide, then add the rest.
+      for (let i = 0; i < params.slides.length; i++) {
+        const s = params.slides[i];
+
+        if (i === 0) {
+          // Reuse the existing first slide — but if a master slide is requested,
+          // add the new slide first, then delete the default one.
+          if (s.masterSlideName) {
+            const masterName = s.masterSlideName.replace(/"/g, '\\\\"');
+            const asCode = 'tell application "Keynote" to tell document "' + docName + '" to make new slide with properties {base slide:master slide "' + masterName + '"}';
+            const script = $.NSAppleScript.alloc.initWithSource(asCode);
+            const errDict = Ref();
+            const result = script.executeAndReturnError(errDict);
+            if (!result) {
+              const errInfo = ObjC.deepUnwrap(errDict[0]);
+              throw new Error("Slide " + (i + 1) + ": " + (errInfo.NSAppleScriptErrorBriefMessage || "Failed to add slide"));
+            }
+            // Delete the original default slide (now at index 0)
+            app.delete(doc.slides[0]);
+          }
+          // else: reuse the auto-generated slide as-is
+        } else {
+          // Add subsequent slides
+          if (s.masterSlideName) {
+            const masterName = s.masterSlideName.replace(/"/g, '\\\\"');
+            const asCode = 'tell application "Keynote" to tell document "' + docName + '" to make new slide with properties {base slide:master slide "' + masterName + '"}';
+            const script = $.NSAppleScript.alloc.initWithSource(asCode);
+            const errDict = Ref();
+            const result = script.executeAndReturnError(errDict);
+            if (!result) {
+              const errInfo = ObjC.deepUnwrap(errDict[0]);
+              throw new Error("Slide " + (i + 1) + ": " + (errInfo.NSAppleScriptErrorBriefMessage || "Failed to add slide"));
+            }
+          } else {
+            doc.slides.push(app.Slide({}));
+          }
+        }
+
+        const slide = doc.slides[doc.slides.length - 1];
+
+        // Set title
+        if (s.title) {
+          try { slide.defaultTitleItem().objectText = s.title; } catch(e) {}
+        }
+
+        // Set body
+        if (s.body) {
+          try { slide.defaultBodyItem().objectText = s.body; } catch(e) {}
+        }
+
+        // Set presenter notes
+        if (s.presenterNotes) {
+          slide.presenterNotes = s.presenterNotes;
+        }
+
+        // Set transition
+        if (s.transition) {
+          slide.transitionProperties = {
+            transitionEffect: s.transition.effect,
+            transitionDuration: s.transition.duration || 1.0,
+          };
+        }
+
+        let title = "";
+        try { const t = slide.defaultTitleItem(); if (t) title = t.objectText(); } catch(e) {}
+        let hasBody = false;
+        try { const b = slide.defaultBodyItem(); if (b) hasBody = b.objectText().length > 0; } catch(e) {}
+        let hasNotes = false;
+        try { hasNotes = slide.presenterNotes().length > 0; } catch(e) {}
+
+        results.push({ slideNumber: i + 1, title, hasBody, hasNotes });
+      }
+
+      return JSON.stringify({ name: doc.name(), slideCount: doc.slides.length, slides: results });
+    `, { themeName: themeName ?? null, slides })),
+  );
 }

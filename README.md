@@ -1,6 +1,6 @@
 # iwork-mcp
 
-MCP server for Apple iWork automation — 76 tools for Numbers, Pages, and Keynote.
+MCP server for Apple iWork automation — 77 tools for Numbers, Pages, and Keynote.
 
 One line to install. Works with Claude Desktop, Claude Code, Codex, and any MCP client.
 
@@ -18,7 +18,7 @@ Ask Claude to build spreadsheets, write documents, and create presentations — 
 
 **Pages** — Create documents with formatted content in one call, read and insert text at any position, find and replace (preserves formatting), format paragraphs (font, size, color), insert images and tables, export to PDF/Word/EPUB.
 
-**Keynote** — Create presentations with theme selection, add/delete/duplicate/reorder/skip slides, choose slide layouts from master slides, read slide content, set titles and bullet points, add images and shapes, set transitions and presenter notes, start/stop slideshows, export to PDF/PowerPoint/HTML.
+**Keynote** — Create presentations with multiple fully-configured slides in one call (theme, layouts, titles, body, notes, transitions), add/delete/duplicate/reorder/skip slides, choose slide layouts from master slides, read slide content, set titles and bullet points, add images and shapes, start/stop slideshows, export to PDF/PowerPoint/HTML.
 
 <details>
 <summary>More examples</summary>
@@ -138,7 +138,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `pages_add_table` | Insert a table |
 | `pages_create_document_with_content` | Create a document with multiple formatted paragraphs in one fast call |
 
-### Keynote (22 tools)
+### Keynote (23 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -164,6 +164,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `keynote_set_transition` | Set slide transition effect |
 | `keynote_start_slideshow` | Start playing the presentation |
 | `keynote_stop_slideshow` | Stop the slideshow |
+| `keynote_create_presentation_with_slides` | Create a presentation with multiple fully-configured slides in one fast call |
 
 ## How it works
 

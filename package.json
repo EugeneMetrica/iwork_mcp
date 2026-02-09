@@ -1,7 +1,7 @@
 {
   "name": "iwork-mcp",
-  "version": "0.6.0",
-  "description": "MCP server for Apple iWork automation — 76 tools for Numbers, Pages, and Keynote",
+  "version": "0.6.1",
+  "description": "MCP server for Apple iWork automation — 77 tools for Numbers, Pages, and Keynote",
   "license": "MIT",
   "type": "module",
   "bin": {

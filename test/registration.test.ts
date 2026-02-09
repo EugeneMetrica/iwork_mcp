@@ -20,9 +20,9 @@ describe("Tool Registration", () => {
     assert.ok(instructions.includes("iWork"), "Instructions should mention iWork");
   });
 
-  it("registers all 76 tools", async () => {
+  it("registers all 77 tools", async () => {
     const { tools } = await ctx.client.listTools();
-    assert.equal(tools.length, 76);
+    assert.equal(tools.length, 77);
   });
 
   it("registers 38 Numbers tools", async () => {
@@ -37,10 +37,10 @@ describe("Tool Registration", () => {
     assert.equal(pages.length, 16);
   });
 
-  it("registers 22 Keynote tools", async () => {
+  it("registers 23 Keynote tools", async () => {
     const { tools } = await ctx.client.listTools();
     const keynote = tools.filter((t) => t.name.startsWith("keynote_"));
-    assert.equal(keynote.length, 22);
+    assert.equal(keynote.length, 23);
   });
 
   it("every tool has a description", async () => {
@@ -114,6 +114,7 @@ describe("Tool Registration", () => {
       "keynote_set_slide_body",
       "keynote_set_presenter_notes",
       "keynote_close_presentation",
+      "keynote_create_presentation_with_slides",
     ];
     for (const name of expected) {
       assert.ok(names.has(name), `Missing tool: ${name}`);
