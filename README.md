@@ -10,7 +10,7 @@ Ask Claude to build spreadsheets, write documents, and create presentations — 
 
 ![Monthly Budget in Numbers](screenshots/budget.jpg)
 
-![Professional Resume in Pages](screenshots/resume.jpg)
+![Professional Resume in Pages](screenshots/resume-v2.jpg)
 
 ![Q4 Business Review in Keynote](screenshots/pitch.jpg)
 
