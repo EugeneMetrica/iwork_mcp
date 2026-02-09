@@ -149,18 +149,26 @@ export function registerPagesTools(server: McpServer): void {
 
   server.tool(
     "pages_get_paragraphs",
-    "Get all paragraphs from a Pages document as an indexed array",
+    "Get all paragraphs from a Pages document with their text, font, size, and color",
     {
       documentName: z.string().describe("Name of the open document"),
     },
     async ({ documentName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
-      const paragraphs = doc.paragraphs();
-      return JSON.stringify(paragraphs.map((p, i) => ({
-        index: i,
-        text: p.text ? p.text() : "",
-      })));
+      const paras = doc.bodyText.paragraphs;
+      const count = paras.length;
+      const result = [];
+      for (let i = 0; i < count; i++) {
+        const p = paras[i];
+        const text = p();
+        if (text === "" && i === count - 1) continue;  // skip trailing empty paragraph
+        const entry = { index: i, text: text };
+        try { entry.font = p.font(); } catch(e) {}
+        try { entry.size = p.size(); } catch(e) {}
+        result.push(entry);
+      }
+      return JSON.stringify(result);
     `, { documentName })),
   );
 
@@ -168,45 +176,82 @@ export function registerPagesTools(server: McpServer): void {
 
   server.tool(
     "pages_add_text",
-    "Append text to the end of the document body (preserves existing formatting)",
+    "Append text to the end of the document body (preserves existing formatting). Include a trailing newline to start a new paragraph.",
     {
       documentName: z.string().describe("Name of the open document"),
-      text: z.string().describe("Text to append"),
+      text: z.string().describe("Text to append (include trailing newline for a new paragraph)"),
     },
     async ({ documentName, text }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
-      // Append by adding a new paragraph to preserve existing formatting
-      const para = app.Paragraph({ text: params.text });
-      doc.paragraphs.push(para);
-      return JSON.stringify({ appended: true, paragraphCount: doc.paragraphs.length });
+      // Save formatting on all existing paragraphs
+      const paras = doc.bodyText.paragraphs;
+      const count = paras.length;
+      const formats = [];
+      for (let i = 0; i < count; i++) {
+        try { formats.push({ font: paras[i].font(), size: paras[i].size(), color: paras[i].color() }); }
+        catch(e) { formats.push(null); }
+      }
+      // Append
+      doc.bodyText = doc.bodyText() + params.text;
+      // Restore formatting on pre-existing paragraphs
+      for (let i = 0; i < formats.length; i++) {
+        if (!formats[i]) continue;
+        try {
+          const p = doc.bodyText.paragraphs[i];
+          p.font = formats[i].font;
+          p.size = formats[i].size;
+          p.color = formats[i].color;
+        } catch(e) {}
+      }
+      return JSON.stringify({ appended: true, paragraphCount: doc.bodyText.paragraphs.length });
     `, { documentName, text })),
   );
 
   server.tool(
     "pages_insert_text_at",
-    "Insert text at a specific paragraph index",
+    "Insert text at a specific paragraph index (preserves formatting on other paragraphs)",
     {
       documentName: z.string().describe("Name of the open document"),
-      text: z.string().describe("Text to insert"),
+      text: z.string().describe("Text to insert (include trailing newline)"),
       afterParagraph: z.number().describe("Insert after this paragraph index (0-based). Use -1 to insert at the beginning."),
     },
     async ({ documentName, text, afterParagraph }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
-      const para = app.Paragraph({ text: params.text });
-      if (params.afterParagraph < 0) {
-        doc.paragraphs.unshift(para);
-      } else {
-        doc.paragraphs.splice(params.afterParagraph + 1, 0, para);
+      // Save formatting
+      const paras = doc.bodyText.paragraphs;
+      const count = paras.length;
+      const formats = [];
+      for (let i = 0; i < count; i++) {
+        try { formats.push({ font: paras[i].font(), size: paras[i].size(), color: paras[i].color() }); }
+        catch(e) { formats.push(null); }
       }
-      return JSON.stringify({ inserted: true, paragraphCount: doc.paragraphs.length });
+      // Insert via string manipulation
+      const bt = doc.bodyText();
+      const lines = bt.split("\\n");
+      const insertIdx = params.afterParagraph < 0 ? 0 : params.afterParagraph + 1;
+      const newText = params.text.endsWith("\\n") ? params.text.slice(0, -1) : params.text;
+      lines.splice(insertIdx, 0, newText);
+      doc.bodyText = lines.join("\\n");
+      // Restore formatting (shift indices after insert point)
+      for (let i = 0; i < formats.length; i++) {
+        if (!formats[i]) continue;
+        const newIdx = i < insertIdx ? i : i + 1;
+        try {
+          const p = doc.bodyText.paragraphs[newIdx];
+          p.font = formats[i].font;
+          p.size = formats[i].size;
+          p.color = formats[i].color;
+        } catch(e) {}
+      }
+      return JSON.stringify({ inserted: true, paragraphCount: doc.bodyText.paragraphs.length });
     `, { documentName, text, afterParagraph })),
   );
 
   server.tool(
     "pages_delete_text",
-    "Delete a paragraph by index",
+    "Delete a paragraph by index (preserves formatting on other paragraphs)",
     {
       documentName: z.string().describe("Name of the open document"),
       paragraphIndex: z.number().describe("Paragraph index to delete (0-based)"),
@@ -214,14 +259,39 @@ export function registerPagesTools(server: McpServer): void {
     async ({ documentName, paragraphIndex }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
-      app.delete(doc.paragraphs[params.paragraphIndex]);
-      return JSON.stringify({ deleted: true, paragraphCount: doc.paragraphs.length });
+      // Save formatting
+      const paras = doc.bodyText.paragraphs;
+      const count = paras.length;
+      const formats = [];
+      for (let i = 0; i < count; i++) {
+        try { formats.push({ font: paras[i].font(), size: paras[i].size(), color: paras[i].color() }); }
+        catch(e) { formats.push(null); }
+      }
+      // Delete via string manipulation
+      const lines = doc.bodyText().split("\\n");
+      if (params.paragraphIndex < 0 || params.paragraphIndex >= lines.length) {
+        throw new Error("Paragraph index " + params.paragraphIndex + " out of range (0-" + (lines.length - 1) + ")");
+      }
+      lines.splice(params.paragraphIndex, 1);
+      formats.splice(params.paragraphIndex, 1);
+      doc.bodyText = lines.join("\\n");
+      // Restore formatting
+      for (let i = 0; i < formats.length; i++) {
+        if (!formats[i]) continue;
+        try {
+          const p = doc.bodyText.paragraphs[i];
+          p.font = formats[i].font;
+          p.size = formats[i].size;
+          p.color = formats[i].color;
+        } catch(e) {}
+      }
+      return JSON.stringify({ deleted: true, paragraphCount: doc.bodyText.paragraphs.length });
     `, { documentName, paragraphIndex })),
   );
 
   server.tool(
     "pages_replace_text",
-    "Find and replace text in a Pages document (operates per-paragraph to preserve formatting)",
+    "Find and replace text in a Pages document (preserves formatting)",
     {
       documentName: z.string().describe("Name of the open document"),
       find: z.string().describe("Text to find"),
@@ -231,52 +301,47 @@ export function registerPagesTools(server: McpServer): void {
     async ({ documentName, find, replace, all }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
-      const paragraphs = doc.paragraphs();
-      let count = 0;
-      for (let i = 0; i < paragraphs.length; i++) {
-        const p = paragraphs[i];
-        let text;
-        try { text = p.text ? p.text() : ""; } catch(e) { continue; }
+      const paras = doc.bodyText.paragraphs;
+      const count = paras.length;
+      let total = 0;
+      for (let i = 0; i < count; i++) {
+        const text = paras[i]();
         if (text.indexOf(params.find) === -1) continue;
         if (params.all !== false) {
           const parts = text.split(params.find);
-          count += parts.length - 1;
-          doc.paragraphs[i].text = parts.join(params.replace);
-        } else if (count === 0) {
+          total += parts.length - 1;
+          doc.bodyText.paragraphs[i] = parts.join(params.replace);
+        } else if (total === 0) {
           const idx = text.indexOf(params.find);
-          doc.paragraphs[i].text = text.substring(0, idx) + params.replace + text.substring(idx + params.find.length);
-          count = 1;
+          doc.bodyText.paragraphs[i] = text.substring(0, idx) + params.replace + text.substring(idx + params.find.length);
+          total = 1;
           break;
         }
       }
-      return JSON.stringify({ replacements: count });
+      return JSON.stringify({ replacements: total });
     `, { documentName, find, replace, all: all ?? true })),
   );
 
   server.tool(
     "pages_format_text",
-    "Set formatting on a paragraph: font, size, color, bold, italic",
+    "Set formatting on a paragraph: font (PostScript name), size, color. For bold use a bold font name like 'HelveticaNeue-Bold', for italic use 'HelveticaNeue-Italic'.",
     {
       documentName: z.string().describe("Name of the open document"),
       paragraphIndex: z.number().describe("Paragraph index (0-based)"),
       format: z.object({
-        bold: z.boolean().optional().describe("Set bold"),
-        italic: z.boolean().optional().describe("Set italic"),
         fontSize: z.number().optional().describe("Font size in points"),
-        fontName: z.string().optional().describe("Font name"),
+        fontName: z.string().optional().describe("PostScript font name (e.g. 'HelveticaNeue-Bold' for bold, 'Georgia-Italic' for italic)"),
         textColor: z.string().optional().describe("Text color as hex, e.g. '#FF0000'"),
       }).describe("Formatting options"),
     },
     async ({ documentName, paragraphIndex, format }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
-      const paragraph = doc.paragraphs[params.paragraphIndex];
+      const paragraph = doc.bodyText.paragraphs[params.paragraphIndex];
       const fmt = params.format;
 
-      if (fmt.fontSize !== undefined) paragraph.fontSize = fmt.fontSize;
-      if (fmt.fontName !== undefined) paragraph.fontName = fmt.fontName;
-      if (fmt.bold !== undefined) paragraph.bold = fmt.bold;
-      if (fmt.italic !== undefined) paragraph.italic = fmt.italic;
+      if (fmt.fontSize !== undefined) paragraph.size = fmt.fontSize;
+      if (fmt.fontName !== undefined) paragraph.font = fmt.fontName;
       if (fmt.textColor !== undefined) {
         const hex = fmt.textColor;
         const r = parseInt(hex.slice(1, 3), 16) * 257;
@@ -323,5 +388,60 @@ export function registerPagesTools(server: McpServer): void {
       doc.tables.push(table);
       return JSON.stringify({ added: true, name: table.name() });
     `, { documentName, rows: rows ?? null, columns: columns ?? null })),
+  );
+
+  // ── Compound Tools ──
+
+  server.tool(
+    "pages_create_document_with_content",
+    "Create a Pages document with multiple formatted paragraphs in one call (much faster than adding paragraphs individually). For bold/italic, use PostScript font names like 'HelveticaNeue-Bold' or 'Georgia-Italic'.",
+    {
+      paragraphs: z.array(z.object({
+        text: z.string().describe("Paragraph text (no trailing newline needed)"),
+        fontSize: z.number().optional().describe("Font size in points (default: 12)"),
+        fontName: z.string().optional().describe("PostScript font name, e.g. 'HelveticaNeue-Bold', 'Georgia-Italic'"),
+        textColor: z.string().optional().describe("Text color as hex, e.g. '#FF0000'"),
+      })).describe("Array of paragraphs with optional formatting"),
+      filePath: z.string().optional().describe("Absolute path to save as .pages file"),
+    },
+    async ({ paragraphs, filePath }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Pages");
+      let doc = app.Document();
+      app.documents.push(doc);
+
+      // Build full text with newlines between paragraphs
+      let fullText = "";
+      for (let i = 0; i < params.paragraphs.length; i++) {
+        fullText += params.paragraphs[i].text + "\\n";
+      }
+      doc.bodyText = fullText;
+
+      // Format each paragraph via bodyText.paragraphs
+      for (let i = 0; i < params.paragraphs.length; i++) {
+        const p = params.paragraphs[i];
+        const para = doc.bodyText.paragraphs[i];
+        if (p.fontSize !== undefined) para.size = p.fontSize;
+        if (p.fontName !== undefined) para.font = p.fontName;
+        if (p.textColor !== undefined) {
+          const hex = p.textColor;
+          const r = parseInt(hex.slice(1, 3), 16) * 257;
+          const g = parseInt(hex.slice(3, 5), 16) * 257;
+          const b = parseInt(hex.slice(5, 7), 16) * 257;
+          para.color = [r, g, b];
+        }
+      }
+
+      if (params.filePath) {
+        doc.save({ in: Path(params.filePath) });
+        doc.close({ saving: "no" });
+        const newDoc = app.open(Path(params.filePath));
+        return JSON.stringify({ name: newDoc.name(), paragraphCount: params.paragraphs.length });
+      }
+
+      return JSON.stringify({ name: doc.name(), paragraphCount: params.paragraphs.length });
+    `, {
+      paragraphs,
+      filePath: filePath ?? null,
+    })),
   );
 }

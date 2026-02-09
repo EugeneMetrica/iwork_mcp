@@ -152,12 +152,13 @@ export function registerNumbersTools(server: McpServer): void {
 
   server.tool(
     "numbers_add_sheet",
-    "Add a new sheet to a Numbers document",
+    "Add a new sheet to a Numbers document. By default, deletes the empty 'Table 1' that Numbers auto-creates, so you start with a clean sheet.",
     {
       documentName: z.string().describe("Name of the open document"),
       sheetName: z.string().optional().describe("Name for the new sheet"),
+      deleteDefaultTable: z.boolean().optional().describe("Delete the default 'Table 1' that Numbers auto-creates on new sheets (default: true)"),
     },
-    async ({ documentName, sheetName }) => handleJXA(() => runJXA<string>(`
+    async ({ documentName, sheetName, deleteDefaultTable }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
       const sheet = app.Sheet();
@@ -165,8 +166,11 @@ export function registerNumbersTools(server: McpServer): void {
       if (params.sheetName) {
         sheet.name = params.sheetName;
       }
+      if (params.deleteDefaultTable !== false) {
+        try { app.delete(sheet.tables[0]); } catch(e) {}
+      }
       return JSON.stringify({ name: sheet.name(), index: doc.sheets.length - 1 });
-    `, { documentName, sheetName: sheetName ?? null })),
+    `, { documentName, sheetName: sheetName ?? null, deleteDefaultTable: deleteDefaultTable ?? true })),
   );
 
   server.tool(
