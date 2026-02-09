@@ -5,6 +5,9 @@ if (process.argv[2] === "install") {
   const { install } = await import("./install.js");
   install();
 } else {
+  const { createRequire } = await import("node:module");
+  const require = createRequire(import.meta.url);
+  const { version } = require("../package.json");
   const { McpServer } = await import("@modelcontextprotocol/sdk/server/mcp.js");
   const { StdioServerTransport } = await import("@modelcontextprotocol/sdk/server/stdio.js");
   const { registerNumbersTools } = await import("./tools/numbers.js");
@@ -13,7 +16,7 @@ if (process.argv[2] === "install") {
 
   const server = new McpServer({
     name: "iwork-mcp",
-    version: "0.5.0",
+    version,
   });
 
   registerNumbersTools(server);
