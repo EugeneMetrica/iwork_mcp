@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJXA, OsascriptError } from "../jxa.js";
+import { ANNOTATIONS } from "../annotations.js";
 
 function toolResult(text: string, isError = false) {
   return { content: [{ type: "text" as const, text }], isError };
@@ -26,6 +27,7 @@ export function registerNumbersTools(server: McpServer): void {
     "numbers_list_documents",
     "List all open Numbers documents",
     {},
+    ANNOTATIONS.readOnly,
     async () => handleJXA(() => runJXA<string[]>(`
       const app = Application("Numbers");
       const docs = app.documents();
@@ -39,6 +41,7 @@ export function registerNumbersTools(server: McpServer): void {
     {
       templateName: z.string().optional().describe("Template name (optional)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ templateName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       let doc;
@@ -59,6 +62,7 @@ export function registerNumbersTools(server: McpServer): void {
     {
       filePath: z.string().describe("Absolute path to the .numbers file"),
     },
+    ANNOTATIONS.readWrite,
     async ({ filePath }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.open(Path(params.filePath));
@@ -73,6 +77,7 @@ export function registerNumbersTools(server: McpServer): void {
       documentName: z.string().describe("Name of the open document"),
       filePath: z.string().optional().describe("File path to save to (for Save As)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, filePath }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -96,6 +101,7 @@ export function registerNumbersTools(server: McpServer): void {
       filePath: z.string().describe("Absolute path for the exported file"),
       format: z.enum(["PDF", "Excel", "CSV"]).describe("Export format"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, filePath, format }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -117,6 +123,7 @@ export function registerNumbersTools(server: McpServer): void {
       documentName: z.string().describe("Name of the open document"),
       saving: z.enum(["yes", "no", "ask"]).optional().describe("Whether to save before closing"),
     },
+    ANNOTATIONS.destructive,
     async ({ documentName, saving }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -138,6 +145,7 @@ export function registerNumbersTools(server: McpServer): void {
     {
       documentName: z.string().describe("Name of the open document"),
     },
+    ANNOTATIONS.readOnly,
     async ({ documentName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -158,6 +166,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Name for the new sheet"),
       deleteDefaultTable: z.boolean().optional().describe("Delete the default 'Table 1' that Numbers auto-creates on new sheets (default: true)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, sheetName, deleteDefaultTable }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -180,6 +189,7 @@ export function registerNumbersTools(server: McpServer): void {
       documentName: z.string().describe("Name of the open document"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
     },
+    ANNOTATIONS.readOnly,
     async ({ documentName, sheetName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -208,6 +218,7 @@ export function registerNumbersTools(server: McpServer): void {
       headerRowCount: z.number().optional().describe("Number of header rows (default: 1, set to 0 to remove header row styling)"),
       headerColumnCount: z.number().optional().describe("Number of header columns (default: 0)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, sheetName, tableName, rows, columns, headerRowCount, headerColumnCount }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -244,6 +255,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().describe("Current sheet name"),
       newName: z.string().describe("New name for the sheet"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, sheetName, newName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -260,6 +272,7 @@ export function registerNumbersTools(server: McpServer): void {
       documentName: z.string().describe("Name of the open document"),
       sheetName: z.string().describe("Name of the sheet to delete"),
     },
+    ANNOTATIONS.destructive,
     async ({ documentName, sheetName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -278,6 +291,7 @@ export function registerNumbersTools(server: McpServer): void {
       newName: z.string().describe("New name for the table"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, tableName, newName, sheetName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -296,6 +310,7 @@ export function registerNumbersTools(server: McpServer): void {
       tableName: z.string().describe("Name of the table to delete"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
     },
+    ANNOTATIONS.destructive,
     async ({ documentName, tableName, sheetName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -316,6 +331,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.destructive,
     async ({ documentName, rowIndex, count, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -339,6 +355,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.destructive,
     async ({ documentName, column, count, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -368,6 +385,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.readOnly,
     async ({ documentName, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -394,6 +412,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.readOnly,
     async ({ documentName, cellRef, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -412,6 +431,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.readOnly,
     async ({ documentName, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -440,6 +460,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, cellRef, value, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -462,6 +483,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, writes, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -488,6 +510,7 @@ export function registerNumbersTools(server: McpServer): void {
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
       resizeToFit: z.boolean().optional().describe("Resize table to fit data (default: true)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, data, startCell, sheetName, tableName, resizeToFit }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -547,6 +570,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, cellRef, formula, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -568,6 +592,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, data, position, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -618,6 +643,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -637,6 +663,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.readOnly,
     async ({ documentName, cellRange, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -667,6 +694,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, cellRange, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -690,6 +718,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, cellRange, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -710,6 +739,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, cellRange, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -736,6 +766,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, column, order, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -765,6 +796,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, headerRowCount, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -784,6 +816,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, headerColumnCount, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -817,6 +850,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, cellRange, format, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -889,6 +923,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, column, width, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -918,6 +953,7 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, row, height, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
@@ -956,6 +992,7 @@ export function registerNumbersTools(server: McpServer): void {
       })).optional().describe("Array of formatting rules to apply"),
       deleteDefaultTable: z.boolean().optional().describe("Delete the default 'Table 1' that Numbers auto-creates (default: true)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, sheetName, tableName, data, headerRowCount, columnWidths, rowHeights, formatting, deleteDefaultTable }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);

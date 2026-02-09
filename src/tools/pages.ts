@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJXA, OsascriptError } from "../jxa.js";
+import { ANNOTATIONS } from "../annotations.js";
 
 function toolResult(text: string, isError = false) {
   return { content: [{ type: "text" as const, text }], isError };
@@ -26,6 +27,7 @@ export function registerPagesTools(server: McpServer): void {
     "pages_list_documents",
     "List all open Pages documents",
     {},
+    ANNOTATIONS.readOnly,
     async () => handleJXA(() => runJXA<string[]>(`
       const app = Application("Pages");
       const docs = app.documents();
@@ -39,6 +41,7 @@ export function registerPagesTools(server: McpServer): void {
     {
       templateName: z.string().optional().describe("Template name (optional)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ templateName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       let doc;
@@ -59,6 +62,7 @@ export function registerPagesTools(server: McpServer): void {
     {
       filePath: z.string().describe("Absolute path to the .pages file"),
     },
+    ANNOTATIONS.readWrite,
     async ({ filePath }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.open(Path(params.filePath));
@@ -73,6 +77,7 @@ export function registerPagesTools(server: McpServer): void {
       documentName: z.string().describe("Name of the open document"),
       filePath: z.string().optional().describe("File path to save to (for Save As)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, filePath }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
@@ -96,6 +101,7 @@ export function registerPagesTools(server: McpServer): void {
       filePath: z.string().describe("Absolute path for the exported file"),
       format: z.enum(["PDF", "Word", "EPUB", "Text"]).describe("Export format"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, filePath, format }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
@@ -118,6 +124,7 @@ export function registerPagesTools(server: McpServer): void {
       documentName: z.string().describe("Name of the open document"),
       saving: z.enum(["yes", "no", "ask"]).optional().describe("Whether to save before closing"),
     },
+    ANNOTATIONS.destructive,
     async ({ documentName, saving }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
@@ -139,6 +146,7 @@ export function registerPagesTools(server: McpServer): void {
     {
       documentName: z.string().describe("Name of the open document"),
     },
+    ANNOTATIONS.readOnly,
     async ({ documentName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
@@ -153,6 +161,7 @@ export function registerPagesTools(server: McpServer): void {
     {
       documentName: z.string().describe("Name of the open document"),
     },
+    ANNOTATIONS.readOnly,
     async ({ documentName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
@@ -181,6 +190,7 @@ export function registerPagesTools(server: McpServer): void {
       documentName: z.string().describe("Name of the open document"),
       text: z.string().describe("Text to append (include trailing newline for a new paragraph)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, text }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
@@ -216,6 +226,7 @@ export function registerPagesTools(server: McpServer): void {
       text: z.string().describe("Text to insert (include trailing newline)"),
       afterParagraph: z.number().describe("Insert after this paragraph index (0-based). Use -1 to insert at the beginning."),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, text, afterParagraph }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
@@ -256,6 +267,7 @@ export function registerPagesTools(server: McpServer): void {
       documentName: z.string().describe("Name of the open document"),
       paragraphIndex: z.number().describe("Paragraph index to delete (0-based)"),
     },
+    ANNOTATIONS.destructive,
     async ({ documentName, paragraphIndex }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
@@ -298,6 +310,7 @@ export function registerPagesTools(server: McpServer): void {
       replace: z.string().describe("Replacement text"),
       all: z.boolean().optional().describe("Replace all occurrences (default: true)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, find, replace, all }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
@@ -334,6 +347,7 @@ export function registerPagesTools(server: McpServer): void {
         textColor: z.string().optional().describe("Text color as hex, e.g. '#FF0000'"),
       }).describe("Formatting options"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, paragraphIndex, format }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
@@ -361,6 +375,7 @@ export function registerPagesTools(server: McpServer): void {
       documentName: z.string().describe("Name of the open document"),
       filePath: z.string().describe("Absolute path to the image file"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, filePath }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
@@ -378,6 +393,7 @@ export function registerPagesTools(server: McpServer): void {
       rows: z.number().optional().describe("Number of rows (default: 3)"),
       columns: z.number().optional().describe("Number of columns (default: 3)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, rows, columns }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
@@ -404,6 +420,7 @@ export function registerPagesTools(server: McpServer): void {
       })).describe("Array of paragraphs with optional formatting"),
       filePath: z.string().optional().describe("Absolute path to save as .pages file"),
     },
+    ANNOTATIONS.readWrite,
     async ({ paragraphs, filePath }) => handleJXA(() => runJXA<string>(`
       const app = Application("Pages");
       let doc = app.Document();

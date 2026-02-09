@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { runJXA, OsascriptError } from "../jxa.js";
+import { ANNOTATIONS } from "../annotations.js";
 
 function toolResult(text: string, isError = false) {
   return { content: [{ type: "text" as const, text }], isError };
@@ -26,6 +27,7 @@ export function registerKeynoteTools(server: McpServer): void {
     "keynote_list_presentations",
     "List all open Keynote presentations",
     {},
+    ANNOTATIONS.readOnly,
     async () => handleJXA(() => runJXA<string[]>(`
       const app = Application("Keynote");
       const docs = app.documents();
@@ -39,6 +41,7 @@ export function registerKeynoteTools(server: McpServer): void {
     {
       themeName: z.string().optional().describe("Theme name (optional, e.g. 'White', 'Black', 'Gradient')"),
     },
+    ANNOTATIONS.readWrite,
     async ({ themeName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       let doc;
@@ -59,6 +62,7 @@ export function registerKeynoteTools(server: McpServer): void {
     {
       filePath: z.string().describe("Absolute path to the .key file"),
     },
+    ANNOTATIONS.readWrite,
     async ({ filePath }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       const doc = app.open(Path(params.filePath));
@@ -73,6 +77,7 @@ export function registerKeynoteTools(server: McpServer): void {
       documentName: z.string().describe("Name of the open presentation"),
       filePath: z.string().optional().describe("File path to save to (for Save As)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, filePath }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);
@@ -96,6 +101,7 @@ export function registerKeynoteTools(server: McpServer): void {
       filePath: z.string().describe("Absolute path for the exported file"),
       format: z.enum(["PDF", "PowerPoint", "HTML", "images"]).describe("Export format"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, filePath, format }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);
@@ -118,6 +124,7 @@ export function registerKeynoteTools(server: McpServer): void {
       documentName: z.string().describe("Name of the open presentation"),
       saving: z.enum(["yes", "no", "ask"]).optional().describe("Whether to save before closing"),
     },
+    ANNOTATIONS.destructive,
     async ({ documentName, saving }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);
@@ -139,6 +146,7 @@ export function registerKeynoteTools(server: McpServer): void {
     {
       documentName: z.string().describe("Name of the open presentation"),
     },
+    ANNOTATIONS.readOnly,
     async ({ documentName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);
@@ -161,6 +169,7 @@ export function registerKeynoteTools(server: McpServer): void {
       documentName: z.string().describe("Name of the open presentation"),
       slideNumber: z.number().describe("Slide number (1-based)"),
     },
+    ANNOTATIONS.readOnly,
     async ({ documentName, slideNumber }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);
@@ -208,6 +217,7 @@ export function registerKeynoteTools(server: McpServer): void {
       documentName: z.string().describe("Name of the open presentation"),
       slideNumber: z.number().describe("Slide number to delete (1-based)"),
     },
+    ANNOTATIONS.destructive,
     async ({ documentName, slideNumber }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);
@@ -223,6 +233,7 @@ export function registerKeynoteTools(server: McpServer): void {
       documentName: z.string().describe("Name of the open presentation"),
       slideNumber: z.number().describe("Slide number to duplicate (1-based)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, slideNumber }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);
@@ -237,6 +248,7 @@ export function registerKeynoteTools(server: McpServer): void {
     {
       documentName: z.string().describe("Name of the open presentation"),
     },
+    ANNOTATIONS.readOnly,
     async ({ documentName }) => handleJXA(() => runJXA<string>(`
       ObjC.import("Foundation");
       const script = $.NSAppleScript.alloc.initWithSource(
@@ -262,6 +274,7 @@ export function registerKeynoteTools(server: McpServer): void {
       fromSlideNumber: z.number().describe("Current slide number (1-based)"),
       toSlideNumber: z.number().describe("Target slide number (1-based)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, fromSlideNumber, toSlideNumber }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);
@@ -279,6 +292,7 @@ export function registerKeynoteTools(server: McpServer): void {
       slideNumber: z.number().describe("Slide number (1-based)"),
       skipped: z.boolean().describe("True to skip/hide, false to unskip/show"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, slideNumber, skipped }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);
@@ -293,6 +307,7 @@ export function registerKeynoteTools(server: McpServer): void {
     {
       documentName: z.string().describe("Name of the open presentation"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       app.stop(app.documents.byName(params.documentName));
@@ -308,6 +323,7 @@ export function registerKeynoteTools(server: McpServer): void {
       masterSlideName: z.string().optional().describe("Master slide / layout name (e.g. 'Title & Subtitle', 'Blank')"),
       afterSlide: z.number().optional().describe("Insert after this slide number (1-based). Default: end."),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, masterSlideName, afterSlide }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);
@@ -352,6 +368,7 @@ export function registerKeynoteTools(server: McpServer): void {
       slideNumber: z.number().describe("Slide number (1-based)"),
       title: z.string().describe("Title text"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, slideNumber, title }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);
@@ -370,6 +387,7 @@ export function registerKeynoteTools(server: McpServer): void {
       slideNumber: z.number().describe("Slide number (1-based)"),
       body: z.string().describe("Body text (use newlines for bullet points)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, slideNumber, body }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);
@@ -392,6 +410,7 @@ export function registerKeynoteTools(server: McpServer): void {
       width: z.number().optional().describe("Width in points"),
       height: z.number().optional().describe("Height in points"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, slideNumber, filePath, x, y, width, height }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);
@@ -418,6 +437,7 @@ export function registerKeynoteTools(server: McpServer): void {
       width: z.number().optional().describe("Width in points (default: 200)"),
       height: z.number().optional().describe("Height in points (default: 100)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, slideNumber, text, x, y, width, height }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);
@@ -443,6 +463,7 @@ export function registerKeynoteTools(server: McpServer): void {
       slideNumber: z.number().describe("Slide number (1-based)"),
       notes: z.string().describe("Presenter notes text"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, slideNumber, notes }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);
@@ -461,6 +482,7 @@ export function registerKeynoteTools(server: McpServer): void {
       effect: z.string().describe("Transition effect name (e.g. 'dissolve', 'push', 'wipe', 'none')"),
       duration: z.number().optional().describe("Duration in seconds (default: 1.0)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, slideNumber, effect, duration }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);
@@ -481,6 +503,7 @@ export function registerKeynoteTools(server: McpServer): void {
       documentName: z.string().describe("Name of the open presentation"),
       fromSlide: z.number().optional().describe("Start from this slide number (1-based, default: 1)"),
     },
+    ANNOTATIONS.readWrite,
     async ({ documentName, fromSlide }) => handleJXA(() => runJXA<string>(`
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);

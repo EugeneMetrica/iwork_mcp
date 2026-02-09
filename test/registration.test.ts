@@ -117,4 +117,61 @@ describe("Tool Registration", () => {
       assert.ok(names.has(name), `Missing tool: ${name}`);
     }
   });
+
+  // ── Annotation Tests ──
+
+  it("every tool has annotations with openWorldHint: false", async () => {
+    const { tools } = await ctx.client.listTools();
+    for (const tool of tools) {
+      assert.ok(
+        tool.annotations,
+        `${tool.name} is missing annotations`,
+      );
+      assert.equal(
+        tool.annotations!.openWorldHint,
+        false,
+        `${tool.name} should have openWorldHint: false`,
+      );
+    }
+  });
+
+  it("read-only tools have readOnlyHint: true", async () => {
+    const readOnlyTools = [
+      "numbers_list_documents", "numbers_list_sheets", "numbers_list_tables",
+      "numbers_read_table", "numbers_read_cell", "numbers_read_range", "numbers_get_table_info",
+      "pages_list_documents", "pages_get_body_text", "pages_get_paragraphs",
+      "keynote_list_presentations", "keynote_list_slides", "keynote_get_slide_content", "keynote_list_master_slides",
+    ];
+    const { tools } = await ctx.client.listTools();
+    const byName = new Map(tools.map((t) => [t.name, t]));
+    for (const name of readOnlyTools) {
+      const tool = byName.get(name);
+      assert.ok(tool, `Missing tool: ${name}`);
+      assert.equal(
+        tool!.annotations?.readOnlyHint,
+        true,
+        `${name} should have readOnlyHint: true`,
+      );
+    }
+  });
+
+  it("destructive tools have destructiveHint: true", async () => {
+    const destructiveTools = [
+      "numbers_close_document", "numbers_delete_sheet", "numbers_delete_table",
+      "numbers_delete_row", "numbers_delete_column",
+      "pages_close_document", "pages_delete_text",
+      "keynote_close_presentation", "keynote_delete_slide",
+    ];
+    const { tools } = await ctx.client.listTools();
+    const byName = new Map(tools.map((t) => [t.name, t]));
+    for (const name of destructiveTools) {
+      const tool = byName.get(name);
+      assert.ok(tool, `Missing tool: ${name}`);
+      assert.equal(
+        tool!.annotations?.destructiveHint,
+        true,
+        `${name} should have destructiveHint: true`,
+      );
+    }
+  });
 });
