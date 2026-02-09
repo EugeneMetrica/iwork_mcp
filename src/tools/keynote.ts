@@ -60,7 +60,7 @@ export function registerKeynoteTools(server: McpServer): void {
     "keynote_open_presentation",
     "Open a .key file from disk",
     {
-      filePath: z.string().describe("Absolute path to the .key file"),
+      filePath: z.string().startsWith("/").describe("Absolute path to the .key file"),
     },
     ANNOTATIONS.readWrite,
     async ({ filePath }) => handleJXA(() => runJXA<string>(`
@@ -75,7 +75,7 @@ export function registerKeynoteTools(server: McpServer): void {
     "Save a Keynote presentation",
     {
       documentName: z.string().describe("Name of the open presentation"),
-      filePath: z.string().optional().describe("File path to save to (for Save As)"),
+      filePath: z.string().startsWith("/").optional().describe("File path to save to (for Save As)"),
     },
     ANNOTATIONS.readWrite,
     async ({ documentName, filePath }) => handleJXA(() => runJXA<string>(`
@@ -98,7 +98,7 @@ export function registerKeynoteTools(server: McpServer): void {
     "Export a Keynote presentation to PDF, PowerPoint (.pptx), HTML, or images",
     {
       documentName: z.string().describe("Name of the open presentation"),
-      filePath: z.string().describe("Absolute path for the exported file"),
+      filePath: z.string().startsWith("/").describe("Absolute path for the exported file"),
       format: z.enum(["PDF", "PowerPoint", "HTML", "images"]).describe("Export format"),
     },
     ANNOTATIONS.readWrite,
@@ -106,7 +106,7 @@ export function registerKeynoteTools(server: McpServer): void {
       const app = Application("Keynote");
       const doc = app.documents.byName(params.documentName);
       const formatMap = {
-        "PDF": "Keynote PDF",
+        "PDF": "PDF",
         "PowerPoint": "Microsoft PowerPoint",
         "HTML": "HTML",
         "images": "slide images",
@@ -167,7 +167,7 @@ export function registerKeynoteTools(server: McpServer): void {
     "Read all content from a slide: title, body, presenter notes, and list of items",
     {
       documentName: z.string().describe("Name of the open presentation"),
-      slideNumber: z.number().describe("Slide number (1-based)"),
+      slideNumber: z.number().int().min(1).describe("Slide number (1-based)"),
     },
     ANNOTATIONS.readOnly,
     async ({ documentName, slideNumber }) => handleJXA(() => runJXA<string>(`
@@ -215,7 +215,7 @@ export function registerKeynoteTools(server: McpServer): void {
     "Delete a slide from the presentation",
     {
       documentName: z.string().describe("Name of the open presentation"),
-      slideNumber: z.number().describe("Slide number to delete (1-based)"),
+      slideNumber: z.number().int().min(1).describe("Slide number to delete (1-based)"),
     },
     ANNOTATIONS.destructive,
     async ({ documentName, slideNumber }) => handleJXA(() => runJXA<string>(`
@@ -231,7 +231,7 @@ export function registerKeynoteTools(server: McpServer): void {
     "Duplicate an existing slide",
     {
       documentName: z.string().describe("Name of the open presentation"),
-      slideNumber: z.number().describe("Slide number to duplicate (1-based)"),
+      slideNumber: z.number().int().min(1).describe("Slide number to duplicate (1-based)"),
     },
     ANNOTATIONS.readWrite,
     async ({ documentName, slideNumber }) => handleJXA(() => runJXA<string>(`
@@ -271,8 +271,8 @@ export function registerKeynoteTools(server: McpServer): void {
     "Move a slide from one position to another",
     {
       documentName: z.string().describe("Name of the open presentation"),
-      fromSlideNumber: z.number().describe("Current slide number (1-based)"),
-      toSlideNumber: z.number().describe("Target slide number (1-based)"),
+      fromSlideNumber: z.number().int().min(1).describe("Current slide number (1-based)"),
+      toSlideNumber: z.number().int().min(1).describe("Target slide number (1-based)"),
     },
     ANNOTATIONS.readWrite,
     async ({ documentName, fromSlideNumber, toSlideNumber }) => handleJXA(() => runJXA<string>(`
@@ -289,7 +289,7 @@ export function registerKeynoteTools(server: McpServer): void {
     "Mark a slide as skipped (hidden) or unskipped",
     {
       documentName: z.string().describe("Name of the open presentation"),
-      slideNumber: z.number().describe("Slide number (1-based)"),
+      slideNumber: z.number().int().min(1).describe("Slide number (1-based)"),
       skipped: z.boolean().describe("True to skip/hide, false to unskip/show"),
     },
     ANNOTATIONS.readWrite,
@@ -321,7 +321,7 @@ export function registerKeynoteTools(server: McpServer): void {
     {
       documentName: z.string().describe("Name of the open presentation"),
       masterSlideName: z.string().optional().describe("Master slide / layout name (e.g. 'Title & Subtitle', 'Blank')"),
-      afterSlide: z.number().optional().describe("Insert after this slide number (1-based). Default: end."),
+      afterSlide: z.number().int().min(1).optional().describe("Insert after this slide number (1-based). Default: end."),
     },
     ANNOTATIONS.readWrite,
     async ({ documentName, masterSlideName, afterSlide }) => handleJXA(() => runJXA<string>(`
@@ -365,7 +365,7 @@ export function registerKeynoteTools(server: McpServer): void {
     "Set the title text of a slide",
     {
       documentName: z.string().describe("Name of the open presentation"),
-      slideNumber: z.number().describe("Slide number (1-based)"),
+      slideNumber: z.number().int().min(1).describe("Slide number (1-based)"),
       title: z.string().describe("Title text"),
     },
     ANNOTATIONS.readWrite,
@@ -384,7 +384,7 @@ export function registerKeynoteTools(server: McpServer): void {
     "Set the body text of a slide (bullet points separated by newlines)",
     {
       documentName: z.string().describe("Name of the open presentation"),
-      slideNumber: z.number().describe("Slide number (1-based)"),
+      slideNumber: z.number().int().min(1).describe("Slide number (1-based)"),
       body: z.string().describe("Body text (use newlines for bullet points)"),
     },
     ANNOTATIONS.readWrite,
@@ -403,12 +403,12 @@ export function registerKeynoteTools(server: McpServer): void {
     "Add an image to a slide",
     {
       documentName: z.string().describe("Name of the open presentation"),
-      slideNumber: z.number().describe("Slide number (1-based)"),
-      filePath: z.string().describe("Absolute path to the image file"),
+      slideNumber: z.number().int().min(1).describe("Slide number (1-based)"),
+      filePath: z.string().startsWith("/").describe("Absolute path to the image file"),
       x: z.number().optional().describe("X position in points"),
       y: z.number().optional().describe("Y position in points"),
-      width: z.number().optional().describe("Width in points"),
-      height: z.number().optional().describe("Height in points"),
+      width: z.number().positive().optional().describe("Width in points"),
+      height: z.number().positive().optional().describe("Height in points"),
     },
     ANNOTATIONS.readWrite,
     async ({ documentName, slideNumber, filePath, x, y, width, height }) => handleJXA(() => runJXA<string>(`
@@ -430,12 +430,12 @@ export function registerKeynoteTools(server: McpServer): void {
     "Add a shape with text to a slide",
     {
       documentName: z.string().describe("Name of the open presentation"),
-      slideNumber: z.number().describe("Slide number (1-based)"),
+      slideNumber: z.number().int().min(1).describe("Slide number (1-based)"),
       text: z.string().optional().describe("Text content for the shape"),
       x: z.number().optional().describe("X position in points"),
       y: z.number().optional().describe("Y position in points"),
-      width: z.number().optional().describe("Width in points (default: 200)"),
-      height: z.number().optional().describe("Height in points (default: 100)"),
+      width: z.number().positive().optional().describe("Width in points (default: 200)"),
+      height: z.number().positive().optional().describe("Height in points (default: 100)"),
     },
     ANNOTATIONS.readWrite,
     async ({ documentName, slideNumber, text, x, y, width, height }) => handleJXA(() => runJXA<string>(`
@@ -460,7 +460,7 @@ export function registerKeynoteTools(server: McpServer): void {
     "Set presenter notes for a slide",
     {
       documentName: z.string().describe("Name of the open presentation"),
-      slideNumber: z.number().describe("Slide number (1-based)"),
+      slideNumber: z.number().int().min(1).describe("Slide number (1-based)"),
       notes: z.string().describe("Presenter notes text"),
     },
     ANNOTATIONS.readWrite,
@@ -478,9 +478,9 @@ export function registerKeynoteTools(server: McpServer): void {
     "Set a transition effect on a slide",
     {
       documentName: z.string().describe("Name of the open presentation"),
-      slideNumber: z.number().describe("Slide number (1-based)"),
+      slideNumber: z.number().int().min(1).describe("Slide number (1-based)"),
       effect: z.string().describe("Transition effect name (e.g. 'dissolve', 'push', 'wipe', 'none')"),
-      duration: z.number().optional().describe("Duration in seconds (default: 1.0)"),
+      duration: z.number().positive().optional().describe("Duration in seconds (default: 1.0)"),
     },
     ANNOTATIONS.readWrite,
     async ({ documentName, slideNumber, effect, duration }) => handleJXA(() => runJXA<string>(`
@@ -501,7 +501,7 @@ export function registerKeynoteTools(server: McpServer): void {
     "Start playing the presentation slideshow",
     {
       documentName: z.string().describe("Name of the open presentation"),
-      fromSlide: z.number().optional().describe("Start from this slide number (1-based, default: 1)"),
+      fromSlide: z.number().int().min(1).optional().describe("Start from this slide number (1-based, default: 1)"),
     },
     ANNOTATIONS.readWrite,
     async ({ documentName, fromSlide }) => handleJXA(() => runJXA<string>(`

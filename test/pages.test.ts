@@ -6,7 +6,9 @@ import { isAppAvailable } from "./helpers/app-check.js";
 async function call(ctx: TestContext, name: string, args: Record<string, unknown> = {}) {
   const result = await ctx.client.callTool({ name, arguments: args });
   const text = (result.content as Array<{ type: string; text: string }>)[0].text;
-  return { text, json: JSON.parse(text), isError: result.isError };
+  let json: unknown;
+  try { json = JSON.parse(text); } catch { json = null; }
+  return { text, json, isError: result.isError };
 }
 
 describe("Pages Integration", async () => {
@@ -18,6 +20,7 @@ describe("Pages Integration", async () => {
 
   let ctx: TestContext;
   let docName: string;
+  const suffix = Date.now();
 
   before(async () => {
     ctx = await createTestServer();
@@ -85,6 +88,50 @@ describe("Pages Integration", async () => {
     const { json: body } = await call(ctx, "pages_get_body_text", { documentName: docName });
     assert.ok(body.text.includes("Replaced paragraph"));
     assert.ok(!body.text.includes("Appended paragraph"));
+  });
+
+  // ── Export to PDF ──
+
+  it("exports to PDF", async () => {
+    const tmpPath = `/tmp/iwork_test_${suffix}.pdf`;
+    const { json } = await call(ctx, "pages_export_document", {
+      documentName: docName,
+      filePath: tmpPath,
+      format: "PDF",
+    }) as { json: { exported: boolean; format: string } };
+    assert.ok(json.exported);
+    assert.equal(json.format, "PDF");
+  });
+
+  // ── Save/close/reopen cycle ──
+
+  it("saves, closes, and reopens a document", async () => {
+    const tmpPath = `/tmp/iwork_test_reopen_${suffix}.pages`;
+
+    const { json: saveResult } = await call(ctx, "pages_save_document", {
+      documentName: docName,
+      filePath: tmpPath,
+    }) as { json: { saved: boolean; name: string } };
+    assert.ok(saveResult.saved);
+    docName = saveResult.name;
+
+    await call(ctx, "pages_close_document", { documentName: docName, saving: "no" });
+
+    const { json: openResult } = await call(ctx, "pages_open_document", { filePath: tmpPath }) as { json: { name: string } };
+    docName = openResult.name;
+
+    const { json: body } = await call(ctx, "pages_get_body_text", { documentName: docName }) as { json: { text: string } };
+    assert.ok(body.text.includes("Test Title"));
+  });
+
+  // ── Error on invalid document ──
+
+  it("returns isError for a nonexistent document", async () => {
+    const result = await ctx.client.callTool({
+      name: "pages_get_body_text",
+      arguments: { documentName: "NoSuchDocument_999" },
+    });
+    assert.equal(result.isError, true);
   });
 
   it("closes the document without saving", async () => {

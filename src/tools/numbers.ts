@@ -60,7 +60,7 @@ export function registerNumbersTools(server: McpServer): void {
     "numbers_open_document",
     "Open a .numbers file from disk",
     {
-      filePath: z.string().describe("Absolute path to the .numbers file"),
+      filePath: z.string().startsWith("/").describe("Absolute path to the .numbers file"),
     },
     ANNOTATIONS.readWrite,
     async ({ filePath }) => handleJXA(() => runJXA<string>(`
@@ -75,7 +75,7 @@ export function registerNumbersTools(server: McpServer): void {
     "Save a Numbers document",
     {
       documentName: z.string().describe("Name of the open document"),
-      filePath: z.string().optional().describe("File path to save to (for Save As)"),
+      filePath: z.string().startsWith("/").optional().describe("File path to save to (for Save As)"),
     },
     ANNOTATIONS.readWrite,
     async ({ documentName, filePath }) => handleJXA(() => runJXA<string>(`
@@ -98,7 +98,7 @@ export function registerNumbersTools(server: McpServer): void {
     "Export a Numbers document to PDF, Excel (.xlsx), or CSV",
     {
       documentName: z.string().describe("Name of the open document"),
-      filePath: z.string().describe("Absolute path for the exported file"),
+      filePath: z.string().startsWith("/").describe("Absolute path for the exported file"),
       format: z.enum(["PDF", "Excel", "CSV"]).describe("Export format"),
     },
     ANNOTATIONS.readWrite,
@@ -106,7 +106,7 @@ export function registerNumbersTools(server: McpServer): void {
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
       const formatMap = {
-        "PDF": "Numbers PDF",
+        "PDF": "PDF",
         "Excel": "Microsoft Excel",
         "CSV": "CSV",
       };
@@ -213,10 +213,10 @@ export function registerNumbersTools(server: McpServer): void {
       documentName: z.string().describe("Name of the open document"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Name for the new table"),
-      rows: z.number().optional().describe("Number of rows (default: 4)"),
-      columns: z.number().optional().describe("Number of columns (default: 4)"),
-      headerRowCount: z.number().optional().describe("Number of header rows (default: 1, set to 0 to remove header row styling)"),
-      headerColumnCount: z.number().optional().describe("Number of header columns (default: 0)"),
+      rows: z.number().int().positive().optional().describe("Number of rows (default: 4)"),
+      columns: z.number().int().positive().optional().describe("Number of columns (default: 4)"),
+      headerRowCount: z.number().int().min(0).optional().describe("Number of header rows (default: 1, set to 0 to remove header row styling)"),
+      headerColumnCount: z.number().int().min(0).optional().describe("Number of header columns (default: 0)"),
     },
     ANNOTATIONS.readWrite,
     async ({ documentName, sheetName, tableName, rows, columns, headerRowCount, headerColumnCount }) => handleJXA(() => runJXA<string>(`
@@ -326,8 +326,8 @@ export function registerNumbersTools(server: McpServer): void {
     "Delete one or more rows from a table",
     {
       documentName: z.string().describe("Name of the open document"),
-      rowIndex: z.number().describe("Row number to delete (1-based)"),
-      count: z.number().optional().describe("Number of rows to delete (default: 1)"),
+      rowIndex: z.number().int().min(1).describe("Row number to delete (1-based)"),
+      count: z.number().int().positive().optional().describe("Number of rows to delete (default: 1)"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
@@ -350,8 +350,8 @@ export function registerNumbersTools(server: McpServer): void {
     "Delete one or more columns from a table",
     {
       documentName: z.string().describe("Name of the open document"),
-      column: z.string().describe("Column letter to delete, e.g. 'A', 'B'"),
-      count: z.number().optional().describe("Number of columns to delete (default: 1)"),
+      column: z.string().regex(/^[A-Z]{1,3}$/).describe("Column letter to delete, e.g. 'A', 'B'"),
+      count: z.number().int().positive().optional().describe("Number of columns to delete (default: 1)"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
@@ -408,7 +408,7 @@ export function registerNumbersTools(server: McpServer): void {
     "Read a single cell's value",
     {
       documentName: z.string().describe("Name of the open document"),
-      cellRef: z.string().describe("Cell reference, e.g. 'A1', 'B3'"),
+      cellRef: z.string().regex(/^[A-Z]{1,3}\d+$/).describe("Cell reference, e.g. 'A1', 'B3'"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
@@ -455,7 +455,7 @@ export function registerNumbersTools(server: McpServer): void {
     "Write a value to a cell",
     {
       documentName: z.string().describe("Name of the open document"),
-      cellRef: z.string().describe("Cell reference, e.g. 'A1', 'B3'"),
+      cellRef: z.string().regex(/^[A-Z]{1,3}\d+$/).describe("Cell reference, e.g. 'A1', 'B3'"),
       value: z.union([z.string(), z.number(), z.boolean()]).describe("Value to write"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
@@ -477,7 +477,7 @@ export function registerNumbersTools(server: McpServer): void {
     {
       documentName: z.string().describe("Name of the open document"),
       writes: z.array(z.object({
-        cellRef: z.string().describe("Cell reference, e.g. 'A1'"),
+        cellRef: z.string().regex(/^[A-Z]{1,3}\d+$/).describe("Cell reference, e.g. 'A1'"),
         value: z.union([z.string(), z.number(), z.boolean()]).describe("Value to write"),
       })).describe("Array of cell writes"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
@@ -505,7 +505,7 @@ export function registerNumbersTools(server: McpServer): void {
       documentName: z.string().describe("Name of the open document"),
       data: z.array(z.array(z.union([z.string(), z.number(), z.boolean(), z.null()]))).min(1)
         .describe("2D array of data — first row can be headers. Null cells are skipped."),
-      startCell: z.string().optional().describe("Top-left cell to start writing from (default: 'A1')"),
+      startCell: z.string().regex(/^[A-Z]{1,3}\d+$/).optional().describe("Top-left cell to start writing from (default: 'A1')"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
       resizeToFit: z.boolean().optional().describe("Resize table to fit data (default: true)"),
@@ -565,7 +565,7 @@ export function registerNumbersTools(server: McpServer): void {
     "Set a formula on a cell (e.g. '=SUM(A1:A10)')",
     {
       documentName: z.string().describe("Name of the open document"),
-      cellRef: z.string().describe("Cell reference, e.g. 'A1'"),
+      cellRef: z.string().regex(/^[A-Z]{1,3}\d+$/).describe("Cell reference, e.g. 'A1'"),
       formula: z.string().describe("Formula string (e.g. '=SUM(A1:A10)')"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
@@ -636,6 +636,120 @@ export function registerNumbersTools(server: McpServer): void {
   );
 
   server.tool(
+    "numbers_insert_row_at",
+    "Insert one or more rows at a specific position in a table, shifting existing rows down",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      rowIndex: z.number().int().min(1).describe("Insert before this row (1-based)"),
+      data: z.array(z.array(z.union([z.string(), z.number(), z.boolean(), z.null()]))).optional()
+        .describe("2D array of row data to populate (each inner array is one row)"),
+      count: z.number().int().positive().optional().describe("Number of rows to insert (default: 1, ignored if data provided)"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+      tableName: z.string().optional().describe("Table name (defaults to first table)"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, rowIndex, data, count, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+
+      const rowsToAdd = params.data ? params.data.length : (params.count || 1);
+      const colCount = table.columnCount();
+      const existingRows = table.rowCount();
+      const insertAt = params.rowIndex - 1; // 0-based
+
+      // Append empty rows
+      for (let i = 0; i < rowsToAdd; i++) {
+        table.rows.push(app.Row());
+      }
+
+      // Shift existing rows down from insertAt
+      for (let r = existingRows - 1; r >= insertAt; r--) {
+        for (let c = 0; c < colCount; c++) {
+          const val = table.cells[r * colCount + c].value();
+          table.cells[(r + rowsToAdd) * colCount + c].value = val;
+          table.cells[r * colCount + c].value = null;
+        }
+      }
+
+      // Write data at insertAt if provided
+      if (params.data) {
+        for (let r = 0; r < params.data.length; r++) {
+          for (let c = 0; c < Math.min(params.data[r].length, colCount); c++) {
+            if (params.data[r][c] !== null) {
+              table.cells[(insertAt + r) * colCount + c].value = params.data[r][c];
+            }
+          }
+        }
+      }
+
+      return JSON.stringify({ rowsInserted: rowsToAdd, newRowCount: table.rowCount() });
+    `, { documentName, rowIndex, data: data ?? null, count: count ?? null, sheetName: sheetName ?? null, tableName: tableName ?? null })),
+  );
+
+  server.tool(
+    "numbers_insert_column_at",
+    "Insert one or more columns at a specific position in a table, shifting existing columns right",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      column: z.string().regex(/^[A-Z]{1,3}$/).describe("Insert before this column letter, e.g. 'B'"),
+      data: z.array(z.array(z.union([z.string(), z.number(), z.boolean(), z.null()]))).optional()
+        .describe("Column-major 2D array: data[i] = values for column i, top-to-bottom"),
+      count: z.number().int().positive().optional().describe("Number of columns to insert (default: 1, ignored if data provided)"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+      tableName: z.string().optional().describe("Table name (defaults to first table)"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, column, data, count, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+
+      // Convert column letter to 0-based index
+      const colStr = params.column.toUpperCase();
+      let insertAt = 0;
+      for (let i = 0; i < colStr.length; i++) {
+        insertAt = insertAt * 26 + (colStr.charCodeAt(i) - 64);
+      }
+      insertAt -= 1;
+
+      const colsToAdd = params.data ? params.data.length : (params.count || 1);
+      const existingCols = table.columnCount();
+      const rowCount = table.rowCount();
+
+      // Append empty columns
+      for (let i = 0; i < colsToAdd; i++) {
+        table.columns.push(app.Column());
+      }
+      const newTotalCols = table.columnCount();
+
+      // Shift existing columns right: for each row, from rightmost existing col down to insertAt
+      for (let r = 0; r < rowCount; r++) {
+        for (let c = existingCols - 1; c >= insertAt; c--) {
+          const val = table.cells[r * newTotalCols + c].value();
+          table.cells[r * newTotalCols + (c + colsToAdd)].value = val;
+          table.cells[r * newTotalCols + c].value = null;
+        }
+      }
+
+      // Write data if provided (column-major: data[i][r] -> row r, column insertAt+i)
+      if (params.data) {
+        for (let i = 0; i < params.data.length; i++) {
+          for (let r = 0; r < params.data[i].length; r++) {
+            if (params.data[i][r] !== null) {
+              table.cells[r * newTotalCols + (insertAt + i)].value = params.data[i][r];
+            }
+          }
+        }
+      }
+
+      return JSON.stringify({ columnsInserted: colsToAdd, newColumnCount: table.columnCount() });
+    `, { documentName, column, data: data ?? null, count: count ?? null, sheetName: sheetName ?? null, tableName: tableName ?? null })),
+  );
+
+  server.tool(
     "numbers_add_column",
     "Add a column to a table",
     {
@@ -659,7 +773,7 @@ export function registerNumbersTools(server: McpServer): void {
     "Read a specific cell range (e.g. 'B2:D10') instead of the entire table. Faster for large tables.",
     {
       documentName: z.string().describe("Name of the open document"),
-      cellRange: z.string().describe("Cell range, e.g. 'A1:C10'"),
+      cellRange: z.string().regex(/^[A-Z]{1,3}\d+:[A-Z]{1,3}\d+$/).describe("Cell range, e.g. 'A1:C10'"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
@@ -669,17 +783,25 @@ export function registerNumbersTools(server: McpServer): void {
       const doc = app.documents.byName(params.documentName);
       const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
       const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
-      const range = table.ranges[params.cellRange];
-      const cells = range.cells();
-      const values = cells.map(c => c.value());
 
-      // Figure out the range dimensions from the cell references
-      const rangeRef = range.name();
-      const colCount = range.columnCount();
-      const rowCount = range.rowCount();
+      // Parse cell range "B2:C3" into row/col indices
+      function parseRef(ref) {
+        const m = ref.match(/^([A-Z]+)(\\d+)$/);
+        let col = 0;
+        for (let i = 0; i < m[1].length; i++) col = col * 26 + m[1].charCodeAt(i) - 64;
+        return { row: parseInt(m[2], 10) - 1, col: col - 1 };
+      }
+      const parts = params.cellRange.split(":");
+      const start = parseRef(parts[0]);
+      const end = parseRef(parts[1]);
+      const totalCols = table.columnCount();
       const data = [];
-      for (let r = 0; r < rowCount; r++) {
-        data.push(values.slice(r * colCount, (r + 1) * colCount));
+      for (let r = start.row; r <= end.row; r++) {
+        const row = [];
+        for (let c = start.col; c <= end.col; c++) {
+          row.push(table.cells[r * totalCols + c].value());
+        }
+        data.push(row);
       }
       return JSON.stringify(data);
     `, { documentName, cellRange, sheetName: sheetName ?? null, tableName: tableName ?? null })),
@@ -690,7 +812,7 @@ export function registerNumbersTools(server: McpServer): void {
     "Merge a range of cells",
     {
       documentName: z.string().describe("Name of the open document"),
-      cellRange: z.string().describe("Cell range to merge, e.g. 'A1:C1'"),
+      cellRange: z.string().regex(/^[A-Z]{1,3}\d+:[A-Z]{1,3}\d+$/).describe("Cell range to merge, e.g. 'A1:C1'"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
@@ -714,7 +836,7 @@ export function registerNumbersTools(server: McpServer): void {
     "Unmerge a previously merged cell range",
     {
       documentName: z.string().describe("Name of the open document"),
-      cellRange: z.string().describe("Cell range to unmerge, e.g. 'A1:C1'"),
+      cellRange: z.string().regex(/^[A-Z]{1,3}\d+:[A-Z]{1,3}\d+$/).describe("Cell range to unmerge, e.g. 'A1:C1'"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
@@ -735,7 +857,7 @@ export function registerNumbersTools(server: McpServer): void {
     "Clear the contents of a cell or range",
     {
       documentName: z.string().describe("Name of the open document"),
-      cellRange: z.string().describe("Cell or range to clear, e.g. 'A1' or 'A1:C10'"),
+      cellRange: z.string().regex(/^[A-Z]{1,3}\d+(?::[A-Z]{1,3}\d+)?$/).describe("Cell or range to clear, e.g. 'A1' or 'A1:C10'"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
@@ -761,7 +883,7 @@ export function registerNumbersTools(server: McpServer): void {
     "Sort table rows by a column",
     {
       documentName: z.string().describe("Name of the open document"),
-      column: z.string().describe("Column letter to sort by, e.g. 'A'"),
+      column: z.string().regex(/^[A-Z]{1,3}$/).describe("Column letter to sort by, e.g. 'A'"),
       order: z.enum(["ascending", "descending"]).optional().describe("Sort order (default: ascending)"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
@@ -792,7 +914,7 @@ export function registerNumbersTools(server: McpServer): void {
     "Set the number of header rows on a table. Header rows get special styling (bold text, grey background). Set to 0 to remove header styling entirely.",
     {
       documentName: z.string().describe("Name of the open document"),
-      headerRowCount: z.number().describe("Number of header rows (0 removes all header styling, 1 is default)"),
+      headerRowCount: z.number().int().min(0).describe("Number of header rows (0 removes all header styling, 1 is default)"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
@@ -812,7 +934,7 @@ export function registerNumbersTools(server: McpServer): void {
     "Set the number of header columns on a table. Header columns get special styling. Set to 0 to remove header column styling.",
     {
       documentName: z.string().describe("Name of the open document"),
-      headerColumnCount: z.number().describe("Number of header columns (0 removes header column styling)"),
+      headerColumnCount: z.number().int().min(0).describe("Number of header columns (0 removes header column styling)"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
@@ -834,14 +956,14 @@ export function registerNumbersTools(server: McpServer): void {
     "Set formatting on a cell or range: font, size, color, alignment, background color, bold, italic",
     {
       documentName: z.string().describe("Name of the open document"),
-      cellRange: z.string().describe("Cell or range reference, e.g. 'A1' or 'A1:C3'"),
+      cellRange: z.string().regex(/^[A-Z]{1,3}\d+(?::[A-Z]{1,3}\d+)?$/).describe("Cell or range reference, e.g. 'A1' or 'A1:C3'"),
       format: z.object({
         bold: z.boolean().optional().describe("Set bold (switches to bold variant of current font)"),
         italic: z.boolean().optional().describe("Set italic (switches to italic variant of current font)"),
-        fontSize: z.number().optional().describe("Font size in points"),
+        fontSize: z.number().positive().optional().describe("Font size in points"),
         fontName: z.string().optional().describe("Font name"),
-        textColor: z.string().optional().describe("Text color as hex, e.g. '#FF0000'"),
-        backgroundColor: z.string().optional().describe("Background color as hex, e.g. '#0000FF'"),
+        textColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().describe("Text color as hex, e.g. '#FF0000'"),
+        backgroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().describe("Background color as hex, e.g. '#0000FF'"),
         alignment: z.enum(["left", "center", "right", "auto"]).optional().describe("Text alignment"),
         verticalAlignment: z.enum(["top", "center", "bottom"]).optional().describe("Vertical alignment"),
         textWrap: z.boolean().optional().describe("Enable text wrapping"),
@@ -918,8 +1040,8 @@ export function registerNumbersTools(server: McpServer): void {
     "Set the width of a column",
     {
       documentName: z.string().describe("Name of the open document"),
-      column: z.string().describe("Column letter, e.g. 'A', 'B'"),
-      width: z.number().describe("Width in points"),
+      column: z.string().regex(/^[A-Z]{1,3}$/).describe("Column letter, e.g. 'A', 'B'"),
+      width: z.number().positive().describe("Width in points"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
@@ -948,8 +1070,8 @@ export function registerNumbersTools(server: McpServer): void {
     "Set the height of a row",
     {
       documentName: z.string().describe("Name of the open document"),
-      row: z.number().describe("Row number (1-based)"),
-      height: z.number().describe("Height in points"),
+      row: z.number().int().min(1).describe("Row number (1-based)"),
+      height: z.number().positive().describe("Height in points"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
       tableName: z.string().optional().describe("Table name (defaults to first table)"),
     },
@@ -975,17 +1097,17 @@ export function registerNumbersTools(server: McpServer): void {
       tableName: z.string().optional().describe("Name for the table (default: same as sheet name)"),
       data: z.array(z.array(z.union([z.string(), z.number(), z.boolean(), z.null()]))).min(1)
         .describe("2D array of table data. First row can be headers."),
-      headerRowCount: z.number().optional().describe("Number of header rows (default: 0 for no header styling)"),
-      columnWidths: z.array(z.number()).optional().describe("Width in points for each column"),
-      rowHeights: z.array(z.number()).optional().describe("Height in points for each row"),
+      headerRowCount: z.number().int().min(0).optional().describe("Number of header rows (default: 0 for no header styling)"),
+      columnWidths: z.array(z.number().positive()).optional().describe("Width in points for each column"),
+      rowHeights: z.array(z.number().positive()).optional().describe("Height in points for each row"),
       formatting: z.array(z.object({
-        cellRange: z.string().describe("Cell or range, e.g. 'A1' or 'A1:G1'"),
+        cellRange: z.string().regex(/^[A-Z]{1,3}\d+(?::[A-Z]{1,3}\d+)?$/).describe("Cell or range, e.g. 'A1' or 'A1:G1'"),
         bold: z.boolean().optional(),
         italic: z.boolean().optional(),
-        fontSize: z.number().optional(),
+        fontSize: z.number().positive().optional(),
         fontName: z.string().optional(),
-        textColor: z.string().optional().describe("Hex color, e.g. '#FF0000'"),
-        backgroundColor: z.string().optional().describe("Hex color, e.g. '#0000FF'"),
+        textColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().describe("Hex color, e.g. '#FF0000'"),
+        backgroundColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().describe("Hex color, e.g. '#0000FF'"),
         alignment: z.enum(["left", "center", "right", "auto"]).optional(),
         verticalAlignment: z.enum(["top", "center", "bottom"]).optional(),
         textWrap: z.boolean().optional(),

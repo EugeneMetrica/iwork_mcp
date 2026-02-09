@@ -60,7 +60,7 @@ export function registerPagesTools(server: McpServer): void {
     "pages_open_document",
     "Open a .pages file from disk",
     {
-      filePath: z.string().describe("Absolute path to the .pages file"),
+      filePath: z.string().startsWith("/").describe("Absolute path to the .pages file"),
     },
     ANNOTATIONS.readWrite,
     async ({ filePath }) => handleJXA(() => runJXA<string>(`
@@ -75,7 +75,7 @@ export function registerPagesTools(server: McpServer): void {
     "Save a Pages document",
     {
       documentName: z.string().describe("Name of the open document"),
-      filePath: z.string().optional().describe("File path to save to (for Save As)"),
+      filePath: z.string().startsWith("/").optional().describe("File path to save to (for Save As)"),
     },
     ANNOTATIONS.readWrite,
     async ({ documentName, filePath }) => handleJXA(() => runJXA<string>(`
@@ -98,7 +98,7 @@ export function registerPagesTools(server: McpServer): void {
     "Export a Pages document to PDF, Word (.docx), EPUB, or plain text",
     {
       documentName: z.string().describe("Name of the open document"),
-      filePath: z.string().describe("Absolute path for the exported file"),
+      filePath: z.string().startsWith("/").describe("Absolute path for the exported file"),
       format: z.enum(["PDF", "Word", "EPUB", "Text"]).describe("Export format"),
     },
     ANNOTATIONS.readWrite,
@@ -106,7 +106,7 @@ export function registerPagesTools(server: McpServer): void {
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
       const formatMap = {
-        "PDF": "Pages PDF",
+        "PDF": "PDF",
         "Word": "Microsoft Word",
         "EPUB": "EPUB",
         "Text": "unformatted text",
@@ -224,7 +224,7 @@ export function registerPagesTools(server: McpServer): void {
     {
       documentName: z.string().describe("Name of the open document"),
       text: z.string().describe("Text to insert (include trailing newline)"),
-      afterParagraph: z.number().describe("Insert after this paragraph index (0-based). Use -1 to insert at the beginning."),
+      afterParagraph: z.number().int().min(-1).describe("Insert after this paragraph index (0-based). Use -1 to insert at the beginning."),
     },
     ANNOTATIONS.readWrite,
     async ({ documentName, text, afterParagraph }) => handleJXA(() => runJXA<string>(`
@@ -265,7 +265,7 @@ export function registerPagesTools(server: McpServer): void {
     "Delete a paragraph by index (preserves formatting on other paragraphs)",
     {
       documentName: z.string().describe("Name of the open document"),
-      paragraphIndex: z.number().describe("Paragraph index to delete (0-based)"),
+      paragraphIndex: z.number().int().min(0).describe("Paragraph index to delete (0-based)"),
     },
     ANNOTATIONS.destructive,
     async ({ documentName, paragraphIndex }) => handleJXA(() => runJXA<string>(`
@@ -340,11 +340,11 @@ export function registerPagesTools(server: McpServer): void {
     "Set formatting on a paragraph: font (PostScript name), size, color. For bold use a bold font name like 'HelveticaNeue-Bold', for italic use 'HelveticaNeue-Italic'.",
     {
       documentName: z.string().describe("Name of the open document"),
-      paragraphIndex: z.number().describe("Paragraph index (0-based)"),
+      paragraphIndex: z.number().int().min(0).describe("Paragraph index (0-based)"),
       format: z.object({
-        fontSize: z.number().optional().describe("Font size in points"),
+        fontSize: z.number().positive().optional().describe("Font size in points"),
         fontName: z.string().optional().describe("PostScript font name (e.g. 'HelveticaNeue-Bold' for bold, 'Georgia-Italic' for italic)"),
-        textColor: z.string().optional().describe("Text color as hex, e.g. '#FF0000'"),
+        textColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().describe("Text color as hex, e.g. '#FF0000'"),
       }).describe("Formatting options"),
     },
     ANNOTATIONS.readWrite,
@@ -373,7 +373,7 @@ export function registerPagesTools(server: McpServer): void {
     "Insert an image into the document",
     {
       documentName: z.string().describe("Name of the open document"),
-      filePath: z.string().describe("Absolute path to the image file"),
+      filePath: z.string().startsWith("/").describe("Absolute path to the image file"),
     },
     ANNOTATIONS.readWrite,
     async ({ documentName, filePath }) => handleJXA(() => runJXA<string>(`
@@ -390,8 +390,8 @@ export function registerPagesTools(server: McpServer): void {
     "Insert a table into the document",
     {
       documentName: z.string().describe("Name of the open document"),
-      rows: z.number().optional().describe("Number of rows (default: 3)"),
-      columns: z.number().optional().describe("Number of columns (default: 3)"),
+      rows: z.number().int().positive().optional().describe("Number of rows (default: 3)"),
+      columns: z.number().int().positive().optional().describe("Number of columns (default: 3)"),
     },
     ANNOTATIONS.readWrite,
     async ({ documentName, rows, columns }) => handleJXA(() => runJXA<string>(`
@@ -414,11 +414,11 @@ export function registerPagesTools(server: McpServer): void {
     {
       paragraphs: z.array(z.object({
         text: z.string().describe("Paragraph text (no trailing newline needed)"),
-        fontSize: z.number().optional().describe("Font size in points (default: 12)"),
+        fontSize: z.number().positive().optional().describe("Font size in points (default: 12)"),
         fontName: z.string().optional().describe("PostScript font name, e.g. 'HelveticaNeue-Bold', 'Georgia-Italic'"),
-        textColor: z.string().optional().describe("Text color as hex, e.g. '#FF0000'"),
+        textColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().describe("Text color as hex, e.g. '#FF0000'"),
       })).describe("Array of paragraphs with optional formatting"),
-      filePath: z.string().optional().describe("Absolute path to save as .pages file"),
+      filePath: z.string().startsWith("/").optional().describe("Absolute path to save as .pages file"),
     },
     ANNOTATIONS.readWrite,
     async ({ paragraphs, filePath }) => handleJXA(() => runJXA<string>(`

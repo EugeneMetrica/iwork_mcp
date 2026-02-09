@@ -6,7 +6,9 @@ import { isAppAvailable } from "./helpers/app-check.js";
 async function call(ctx: TestContext, name: string, args: Record<string, unknown> = {}) {
   const result = await ctx.client.callTool({ name, arguments: args });
   const text = (result.content as Array<{ type: string; text: string }>)[0].text;
-  return { text, json: JSON.parse(text), isError: result.isError };
+  let json: unknown;
+  try { json = JSON.parse(text); } catch { json = null; }
+  return { text, json, isError: result.isError };
 }
 
 describe("Keynote Integration", async () => {
@@ -18,6 +20,7 @@ describe("Keynote Integration", async () => {
 
   let ctx: TestContext;
   let docName: string;
+  const suffix = Date.now();
 
   before(async () => {
     ctx = await createTestServer();
@@ -104,6 +107,92 @@ describe("Keynote Integration", async () => {
       slideNumber: 1,
     });
     assert.equal(content.presenterNotes, "Remember to pause here.");
+  });
+
+  // ── Delete slide ──
+
+  it("deletes a slide", async () => {
+    // Add an extra slide, then delete it
+    await call(ctx, "keynote_add_slide", { documentName: docName });
+    const { json: before } = await call(ctx, "keynote_list_slides", { documentName: docName });
+    const countBefore = before.length;
+
+    const { json } = await call(ctx, "keynote_delete_slide", {
+      documentName: docName,
+      slideNumber: countBefore,
+    });
+    assert.ok(json.deleted);
+    assert.equal(json.remainingSlides, countBefore - 1);
+  });
+
+  // ── Duplicate slide ──
+
+  it("duplicates a slide", async () => {
+    const { json: before } = await call(ctx, "keynote_list_slides", { documentName: docName });
+    const countBefore = before.length;
+
+    const { json } = await call(ctx, "keynote_duplicate_slide", {
+      documentName: docName,
+      slideNumber: 1,
+    });
+    assert.ok(json.duplicated);
+    assert.equal(json.totalSlides, countBefore + 1);
+
+    // Clean up: delete the duplicate
+    await call(ctx, "keynote_delete_slide", {
+      documentName: docName,
+      slideNumber: json.totalSlides,
+    });
+  });
+
+  // ── Reorder slide ──
+
+  it("reorders slides", async () => {
+    // Ensure at least 3 slides
+    await call(ctx, "keynote_add_slide", { documentName: docName });
+    await call(ctx, "keynote_add_slide", { documentName: docName });
+
+    // Set distinct titles to track
+    await call(ctx, "keynote_set_slide_title", { documentName: docName, slideNumber: 1, title: "Slide A" });
+    await call(ctx, "keynote_set_slide_title", { documentName: docName, slideNumber: 2, title: "Slide B" });
+
+    // Move slide 2 to position 1
+    const { json } = await call(ctx, "keynote_reorder_slide", {
+      documentName: docName,
+      fromSlideNumber: 2,
+      toSlideNumber: 1,
+    });
+    assert.ok(json.moved);
+
+    // Verify: the first slide should now be "Slide B"
+    const { json: content } = await call(ctx, "keynote_get_slide_content", {
+      documentName: docName,
+      slideNumber: 1,
+    });
+    assert.equal(content.title, "Slide B");
+  });
+
+  // ── Export to PDF ──
+
+  it("exports to PDF", async () => {
+    const tmpPath = `/tmp/iwork_test_${suffix}.pdf`;
+    const { json } = await call(ctx, "keynote_export_presentation", {
+      documentName: docName,
+      filePath: tmpPath,
+      format: "PDF",
+    });
+    assert.ok(json.exported);
+    assert.equal(json.format, "PDF");
+  });
+
+  // ── Error on nonexistent presentation ──
+
+  it("returns isError for a nonexistent presentation", async () => {
+    const result = await ctx.client.callTool({
+      name: "keynote_list_slides",
+      arguments: { documentName: "NoSuchPresentation_999" },
+    });
+    assert.equal(result.isError, true);
   });
 
   it("closes the presentation without saving", async () => {

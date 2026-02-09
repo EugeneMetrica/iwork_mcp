@@ -20,15 +20,15 @@ describe("Tool Registration", () => {
     assert.ok(instructions.includes("iWork"), "Instructions should mention iWork");
   });
 
-  it("registers all 74 tools", async () => {
+  it("registers all 76 tools", async () => {
     const { tools } = await ctx.client.listTools();
-    assert.equal(tools.length, 74);
+    assert.equal(tools.length, 76);
   });
 
-  it("registers 36 Numbers tools", async () => {
+  it("registers 38 Numbers tools", async () => {
     const { tools } = await ctx.client.listTools();
     const numbers = tools.filter((t) => t.name.startsWith("numbers_"));
-    assert.equal(numbers.length, 36);
+    assert.equal(numbers.length, 38);
   });
 
   it("registers 16 Pages tools", async () => {
@@ -78,6 +78,8 @@ describe("Tool Registration", () => {
       "numbers_add_sheet",
       "numbers_close_document",
       "numbers_create_sheet_with_table",
+      "numbers_insert_row_at",
+      "numbers_insert_column_at",
     ];
     for (const name of expected) {
       assert.ok(names.has(name), `Missing tool: ${name}`);
