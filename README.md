@@ -1,8 +1,8 @@
 # iwork-mcp
 
-MCP server for Apple iWork automation — 74 tools for Numbers, Pages, and Keynote.
+MCP server for Apple iWork automation — 76 tools for Numbers, Pages, and Keynote.
 
-One line to install. Works with Claude Desktop, Claude Code, and any MCP client.
+One line to install. Works with Claude Desktop, Claude Code, Codex, and any MCP client.
 
 ## What it does
 
@@ -45,6 +45,12 @@ Then restart Claude Desktop (Cmd+Q and reopen). Done.
 claude mcp add iwork -- npx -y iwork-mcp
 ```
 
+### Codex
+
+```bash
+codex mcp add iwork -- npx -y iwork-mcp
+```
+
 ### Requirements
 
 - **macOS 13 Ventura or later** (tested on macOS 14 Sonoma)
@@ -68,7 +74,7 @@ claude mcp add iwork -- npx -y iwork-mcp
 
 ## Tools
 
-### Numbers (36 tools)
+### Numbers (38 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -95,7 +101,9 @@ claude mcp add iwork -- npx -y iwork-mcp
 | `numbers_write_table` | Bulk write a 2D array (fast) |
 | `numbers_set_formula` | Set a formula on a cell |
 | `numbers_add_row` | Add rows with optional data |
+| `numbers_insert_row_at` | Insert rows at a specific position, shifting existing rows down |
 | `numbers_add_column` | Add a column |
+| `numbers_insert_column_at` | Insert columns at a specific position, shifting existing columns right |
 | `numbers_delete_row` | Delete rows |
 | `numbers_delete_column` | Delete columns |
 | `numbers_sort_rows` | Sort table by a column |
@@ -162,7 +170,7 @@ claude mcp add iwork -- npx -y iwork-mcp
 The server runs JXA (JavaScript for Automation) scripts via `osascript` to control iWork apps. Each tool call is a single `osascript` invocation — parameters go in as JSON via `argv[0]`, results come back as JSON via stdout.
 
 ```
-Claude Desktop / Claude Code
+Claude Desktop / Claude Code / Codex
   ↓ MCP protocol over stdio
 iwork-mcp server (Node.js)
   ↓ child_process.execFile
