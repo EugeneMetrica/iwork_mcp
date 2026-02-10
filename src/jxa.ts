@@ -54,6 +54,51 @@ export function isCreatorStudio(): boolean {
   return IWORK_APPS.some((app) => resolvedNames![app] !== app);
 }
 
+/** Map from iWork app name to System Events process name. */
+export function processName(app: IWorkApp): string {
+  return app; // System Events always uses the base name ("Keynote", not "Keynote Creator Studio")
+}
+
+/**
+ * Click a menu item by name via System Events (resolution-independent).
+ * menuPath is top-level menu followed by nested item names,
+ * e.g. ["Table", "Magic Fill Cells"] or ["Format", "Image", "Super Resolution"].
+ */
+export async function clickMenuItem(
+  app: IWorkApp,
+  menuPath: string[],
+  options?: { predelay?: number; postdelay?: number },
+): Promise<void> {
+  const proc = processName(app);
+  const predelay = options?.predelay ?? 0.3;
+  const postdelay = options?.postdelay ?? 0.5;
+
+  // Build the AppleScript menu traversal
+  // ["Format", "Image", "Super Resolution"] →
+  //   menu item "Super Resolution" of menu "Image" of menu item "Image" of menu "Format" of menu bar 1
+  let selector: string;
+  if (menuPath.length === 2) {
+    selector = `menu item "${menuPath[1]}" of menu "${menuPath[0]}" of menu bar 1`;
+  } else if (menuPath.length === 3) {
+    selector = `menu item "${menuPath[2]}" of menu "${menuPath[1]}" of menu item "${menuPath[1]}" of menu "${menuPath[0]}" of menu bar 1`;
+  } else {
+    throw new Error("clickMenuItem supports 2 or 3 level menu paths");
+  }
+
+  const script = `
+    tell application "${resolveAppName(app)}" to activate
+    delay ${predelay}
+    tell application "System Events"
+      tell process "${proc}"
+        click ${selector}
+      end tell
+    end tell
+    delay ${postdelay}
+  `;
+
+  await execFileAsync("/usr/bin/osascript", ["-e", script], { timeout: 15_000 });
+}
+
 /**
  * Creator Studio workaround for "Save As" (doc.save({in:}) hangs).
  * Copies the auto-saved iCloud file, then closes + reopens from the new path.

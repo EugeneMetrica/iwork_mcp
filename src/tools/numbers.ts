@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { runJXA, OsascriptError, isCreatorStudio, creatorStudioSaveAs, creatorStudioExportPDF } from "../jxa.js";
+import { runJXA, OsascriptError, isCreatorStudio, creatorStudioSaveAs, creatorStudioExportPDF, clickMenuItem, resolveAppName } from "../jxa.js";
 import { ANNOTATIONS } from "../annotations.js";
 
 function toolResult(text: string, isError = false) {
@@ -1341,5 +1341,157 @@ export function registerNumbersTools(server: McpServer): void {
       sheetName: sheetName ?? null,
       tableName: tableName ?? null,
     })),
+  );
+
+  // ── Creator Studio Features (require subscription) ──
+
+  server.tool(
+    "numbers_magic_fill",
+    "Use AI to fill cells based on a pattern (Creator Studio only). Provide example values in the first rows of a column, then specify the range of empty cells to fill. Magic Fill detects the pattern and fills the remaining cells automatically.",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      range: z.string().describe("Cell range to fill, e.g. 'C3:C20' (must follow rows that contain example values showing the pattern)"),
+      sheetName: z.string().optional().describe("Sheet name (default: first sheet)"),
+      tableName: z.string().optional().describe("Table name (default: first table)"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, range, sheetName, tableName }) => {
+      if (!isCreatorStudio()) {
+        return toolResult("Magic Fill requires Apple Creator Studio (iWork 15.1+). Install from the App Store.", true);
+      }
+      return handleJXA(async () => {
+        const appName = resolveAppName("Numbers");
+
+        // 1. Enter the table and set the selection range via JXA
+        await runJXA<void>(`
+          const app = Application("Numbers");
+          app.activate();
+          const doc = app.documents.byName(params.documentName);
+          const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+          const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+          table.selectionRange = table.ranges[params.range];
+        `, { documentName, range, sheetName: sheetName ?? null, tableName: tableName ?? null },
+        { label: "magic_fill:select" });
+
+        // 2. Enter the table in the UI (needed for menu to activate)
+        await runJXA<void>(`
+          const app = Application("Numbers");
+          app.activate();
+          delay(0.3);
+          const se = Application("System Events");
+          se.processes.byName("Numbers").frontmost();
+          se.keystroke("\\t");
+          delay(0.3);
+          // Re-set selection after entering table
+          const doc = app.documents.byName(params.documentName);
+          const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+          const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+          table.selectionRange = table.ranges[params.range];
+        `, { documentName, range, sheetName: sheetName ?? null, tableName: tableName ?? null },
+        { label: "magic_fill:enter_table" });
+
+        // 3. Click "Magic Fill Cells" (or "Magic Fill Cell" for single cell)
+        try {
+          await clickMenuItem("Numbers", ["Table", "Magic Fill Cells"]);
+        } catch {
+          try {
+            await clickMenuItem("Numbers", ["Table", "Magic Fill Cell"]);
+          } catch {
+            throw new Error("Magic Fill is not available. Ensure the selected range is adjacent to rows with example values that show a recognizable pattern.");
+          }
+        }
+
+        // 4. Wait for AI to process suggestions and accept with Return
+        await runJXA<void>(`
+          delay(3);
+          const se = Application("System Events");
+          se.keystroke("\\r");
+          delay(1);
+        `, undefined, { label: "magic_fill:accept", timeout: 15_000 });
+
+        // 5. Read back the filled values
+        return runJXA<string>(`
+          const app = Application("Numbers");
+          const doc = app.documents.byName(params.documentName);
+          const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+          const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+          const range = table.ranges[params.range];
+          const cells = range.cells();
+          const values = cells.map(c => ({ name: c.name(), value: c.value() }));
+          const filled = values.filter(v => v.value !== null).length;
+          const total = values.length;
+          return JSON.stringify({ filled, total, values });
+        `, { documentName, range, sheetName: sheetName ?? null, tableName: tableName ?? null },
+        { label: "magic_fill:read" });
+      });
+    },
+  );
+
+  server.tool(
+    "numbers_super_resolution",
+    "Upscale an image using AI Super Resolution (Creator Studio only). Increases resolution while preserving quality.",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      imageIndex: z.number().int().min(1).describe("Image index (1-based) on the sheet"),
+      sheetName: z.string().optional().describe("Sheet name (default: first sheet)"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, imageIndex, sheetName }) => {
+      if (!isCreatorStudio()) {
+        return toolResult("Super Resolution requires Apple Creator Studio (iWork 15.1+).", true);
+      }
+      return handleJXA(async () => {
+        // Select the image via JXA
+        await runJXA<void>(`
+          const app = Application("Numbers");
+          app.activate();
+          const doc = app.documents.byName(params.documentName);
+          const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+          const images = sheet.images();
+          if (params.imageIndex > images.length) throw new Error("Image index " + params.imageIndex + " out of range (sheet has " + images.length + " images)");
+          app.selection = [images[params.imageIndex - 1]];
+        `, { documentName, imageIndex, sheetName: sheetName ?? null },
+        { label: "super_resolution:select" });
+
+        // Click Format > Image > Super Resolution
+        await clickMenuItem("Numbers", ["Format", "Image", "Super Resolution"], { postdelay: 2 });
+
+        return JSON.stringify({ success: true, message: "Super Resolution started. The image is being upscaled in the background." });
+      });
+    },
+  );
+
+  server.tool(
+    "numbers_remove_background",
+    "Remove the background from an image using AI (Creator Studio only). Opens background removal mode.",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      imageIndex: z.number().int().min(1).describe("Image index (1-based) on the sheet"),
+      sheetName: z.string().optional().describe("Sheet name (default: first sheet)"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, imageIndex, sheetName }) => {
+      if (!isCreatorStudio()) {
+        return toolResult("Remove Background requires Apple Creator Studio (iWork 15.1+).", true);
+      }
+      return handleJXA(async () => {
+        // Select the image via JXA
+        await runJXA<void>(`
+          const app = Application("Numbers");
+          app.activate();
+          const doc = app.documents.byName(params.documentName);
+          const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+          const images = sheet.images();
+          if (params.imageIndex > images.length) throw new Error("Image index " + params.imageIndex + " out of range (sheet has " + images.length + " images)");
+          app.selection = [images[params.imageIndex - 1]];
+        `, { documentName, imageIndex, sheetName: sheetName ?? null },
+        { label: "remove_background:select" });
+
+        // Click Format > Image > Remove Background
+        await clickMenuItem("Numbers", ["Format", "Image", "Remove Background"], { postdelay: 2 });
+
+        return JSON.stringify({ success: true, message: "Background removal started. The background is being analyzed and removed." });
+      });
+    },
   );
 }

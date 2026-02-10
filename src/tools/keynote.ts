@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { runJXA, OsascriptError, isCreatorStudio, creatorStudioSaveAs, creatorStudioExportPDF } from "../jxa.js";
+import { runJXA, OsascriptError, isCreatorStudio, creatorStudioSaveAs, creatorStudioExportPDF, clickMenuItem, resolveAppName } from "../jxa.js";
 import { ANNOTATIONS } from "../annotations.js";
 
 function toolResult(text: string, isError = false) {
@@ -668,5 +668,103 @@ export function registerKeynoteTools(server: McpServer): void {
 
       return JSON.stringify({ name: doc.name(), slideCount: doc.slides.length, slides: results });
     `, { themeName: themeName ?? null, slides })),
+  );
+
+  // ── Creator Studio Features (require subscription) ──
+
+  server.tool(
+    "keynote_clean_up_slide",
+    "Auto-adjust a slide's layout, spacing, alignment, and typography using AI (Creator Studio only).",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+      slideIndex: z.number().int().min(1).describe("Slide number (1-based)"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, slideIndex }) => {
+      if (!isCreatorStudio()) {
+        return toolResult("Clean Up Slide requires Apple Creator Studio (iWork 15.1+).", true);
+      }
+      return handleJXA(async () => {
+        // Navigate to the target slide
+        await runJXA<void>(`
+          const app = Application("Keynote");
+          app.activate();
+          const doc = app.documents.byName(params.documentName);
+          doc.currentSlide = doc.slides[params.slideIndex - 1];
+        `, { documentName, slideIndex },
+        { label: "clean_up_slide:navigate" });
+
+        // Click Slide > Clean Up Slide
+        await clickMenuItem("Keynote", ["Slide", "Clean Up Slide"], { postdelay: 3 });
+
+        return JSON.stringify({ success: true, message: "Slide " + slideIndex + " cleaned up." });
+      });
+    },
+  );
+
+  server.tool(
+    "keynote_super_resolution",
+    "Upscale an image on a slide using AI Super Resolution (Creator Studio only). Increases resolution while preserving quality.",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+      slideIndex: z.number().int().min(1).describe("Slide number (1-based)"),
+      imageIndex: z.number().int().min(1).describe("Image index (1-based) on the slide"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, slideIndex, imageIndex }) => {
+      if (!isCreatorStudio()) {
+        return toolResult("Super Resolution requires Apple Creator Studio (iWork 15.1+).", true);
+      }
+      return handleJXA(async () => {
+        await runJXA<void>(`
+          const app = Application("Keynote");
+          app.activate();
+          const doc = app.documents.byName(params.documentName);
+          doc.currentSlide = doc.slides[params.slideIndex - 1];
+          const slide = doc.slides[params.slideIndex - 1];
+          const images = slide.images();
+          if (params.imageIndex > images.length) throw new Error("Image index " + params.imageIndex + " out of range (slide has " + images.length + " images)");
+          app.selection = [images[params.imageIndex - 1]];
+        `, { documentName, slideIndex, imageIndex },
+        { label: "super_resolution:select" });
+
+        await clickMenuItem("Keynote", ["Format", "Image", "Super Resolution"], { postdelay: 2 });
+
+        return JSON.stringify({ success: true, message: "Super Resolution started on slide " + slideIndex + ", image " + imageIndex + "." });
+      });
+    },
+  );
+
+  server.tool(
+    "keynote_remove_background",
+    "Remove the background from an image on a slide using AI (Creator Studio only).",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+      slideIndex: z.number().int().min(1).describe("Slide number (1-based)"),
+      imageIndex: z.number().int().min(1).describe("Image index (1-based) on the slide"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, slideIndex, imageIndex }) => {
+      if (!isCreatorStudio()) {
+        return toolResult("Remove Background requires Apple Creator Studio (iWork 15.1+).", true);
+      }
+      return handleJXA(async () => {
+        await runJXA<void>(`
+          const app = Application("Keynote");
+          app.activate();
+          const doc = app.documents.byName(params.documentName);
+          doc.currentSlide = doc.slides[params.slideIndex - 1];
+          const slide = doc.slides[params.slideIndex - 1];
+          const images = slide.images();
+          if (params.imageIndex > images.length) throw new Error("Image index " + params.imageIndex + " out of range (slide has " + images.length + " images)");
+          app.selection = [images[params.imageIndex - 1]];
+        `, { documentName, slideIndex, imageIndex },
+        { label: "remove_background:select" });
+
+        await clickMenuItem("Keynote", ["Format", "Image", "Remove Background"], { postdelay: 2 });
+
+        return JSON.stringify({ success: true, message: "Background removal started on slide " + slideIndex + ", image " + imageIndex + "." });
+      });
+    },
   );
 }
