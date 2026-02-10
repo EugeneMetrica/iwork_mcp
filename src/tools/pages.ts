@@ -96,7 +96,7 @@ export function registerPagesTools(server: McpServer): void {
 
   server.tool(
     "pages_save_document",
-    "Save a Pages document",
+    "Save a Pages document as .pages (use this to save to disk — use pages_export_document for PDF/Word/EPUB)",
     {
       documentName: z.string().describe("Name of the open document"),
       filePath: z.string().startsWith("/").optional().describe("File path to save to (for Save As)"),
@@ -128,7 +128,7 @@ export function registerPagesTools(server: McpServer): void {
 
   server.tool(
     "pages_export_document",
-    "Export a Pages document to PDF, Word (.docx), EPUB, or plain text",
+    "Export a Pages document to a different format: PDF, Word (.docx), EPUB, or plain text (not .pages — use pages_save_document for that)",
     {
       documentName: z.string().describe("Name of the open document"),
       filePath: z.string().startsWith("/").describe("Absolute path for the exported file"),

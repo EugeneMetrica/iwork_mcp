@@ -96,7 +96,7 @@ export function registerNumbersTools(server: McpServer): void {
 
   server.tool(
     "numbers_save_document",
-    "Save a Numbers document",
+    "Save a Numbers document as .numbers (use this to save to disk — use numbers_export_document for PDF/Excel/CSV)",
     {
       documentName: z.string().describe("Name of the open document"),
       filePath: z.string().startsWith("/").optional().describe("File path to save to (for Save As)"),
@@ -128,7 +128,7 @@ export function registerNumbersTools(server: McpServer): void {
 
   server.tool(
     "numbers_export_document",
-    "Export a Numbers document to PDF, Excel (.xlsx), or CSV",
+    "Export a Numbers document to a different format: PDF, Excel (.xlsx), or CSV (not .numbers — use numbers_save_document for that)",
     {
       documentName: z.string().describe("Name of the open document"),
       filePath: z.string().startsWith("/").describe("Absolute path for the exported file"),

@@ -96,7 +96,7 @@ export function registerKeynoteTools(server: McpServer): void {
 
   server.tool(
     "keynote_save_presentation",
-    "Save a Keynote presentation",
+    "Save a Keynote presentation as .key (use this to save to disk — use keynote_export_presentation for PDF/PowerPoint/HTML)",
     {
       documentName: z.string().describe("Name of the open presentation"),
       filePath: z.string().startsWith("/").optional().describe("File path to save to (for Save As)"),
@@ -128,7 +128,7 @@ export function registerKeynoteTools(server: McpServer): void {
 
   server.tool(
     "keynote_export_presentation",
-    "Export a Keynote presentation to PDF, PowerPoint (.pptx), HTML, or images",
+    "Export a Keynote presentation to a different format: PDF, PowerPoint (.pptx), HTML, or images (not .key — use keynote_save_presentation for that)",
     {
       documentName: z.string().describe("Name of the open presentation"),
       filePath: z.string().startsWith("/").describe("Absolute path for the exported file"),
