@@ -209,6 +209,10 @@ export function registerNumbersTools(server: McpServer): void {
     async ({ documentName, sheetName, deleteDefaultTable }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
+      // Clean up partial previous attempt (Creator Studio retry safety)
+      if (params.sheetName) {
+        try { app.delete(doc.sheets.byName(params.sheetName)); } catch(e) {}
+      }
       const sheet = app.Sheet();
       doc.sheets.push(sheet);
       if (params.sheetName) {
@@ -1157,6 +1161,9 @@ export function registerNumbersTools(server: McpServer): void {
     async ({ documentName, sheetName, tableName, data, headerRowCount, columnWidths, rowHeights, formatting, deleteDefaultTable }) => handleJXA(() => runJXA<string>(`
       const app = Application("Numbers");
       const doc = app.documents.byName(params.documentName);
+
+      // Clean up partial previous attempt (Creator Studio retry safety)
+      try { app.delete(doc.sheets.byName(params.sheetName)); } catch(e) {}
 
       // Create the sheet
       const sheet = app.Sheet();
