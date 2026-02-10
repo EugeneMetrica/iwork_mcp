@@ -165,12 +165,11 @@ const EXT_MAP: Record<IWorkApp, string> = {
   Keynote: ".key",
 };
 
-function detectAppFromScript(script: string): IWorkApp | undefined {
-  resolvedNames ??= detectAppNames();
+function detectCreatorStudioAppFromScript(script: string): IWorkApp | undefined {
   for (const app of IWORK_APPS) {
-    const resolved = resolvedNames[app];
-    if (script.includes(`Application("${resolved}")`)) return app;
-    if (script.includes(`application "${resolved}"`)) return app;
+    const csName = `${app} Creator Studio`;
+    if (script.includes(`Application("${csName}")`)) return app;
+    if (script.includes(`application "${csName}"`)) return app;
   }
   return undefined;
 }
@@ -187,25 +186,16 @@ function detectAppFromScript(script: string): IWorkApp | undefined {
  * `params.documentName`, and the app can be identified.
  */
 export function injectDocumentNameResolution(script: string): string {
-  // Only needed on Creator Studio machines
-  resolvedNames ??= detectAppNames();
-  const isCreatorStudio = IWORK_APPS.some((app) => resolvedNames![app] !== app);
-  if (!isCreatorStudio) return script;
-
   // Only relevant for scripts that use params.documentName
   if (!script.includes("params.documentName")) return script;
 
-  const app = detectAppFromScript(script);
+  // Detect Creator Studio app from the script content (not machine state)
+  const app = detectCreatorStudioAppFromScript(script);
   if (!app) return script;
 
   const ext = EXT_MAP[app];
-  const resolved = resolvedNames[app];
-
-  // Determine the application constructor used in the script
-  const appExpr = script.includes(`Application("${resolved}")`)
-    ? `Application("${resolved}")`
-    : undefined;
-  if (!appExpr) return script;
+  const csName = `${app} Creator Studio`;
+  const appExpr = `Application("${csName}")`;
 
   const injection = `
   // [iwork-mcp] Creator Studio document name resolution
