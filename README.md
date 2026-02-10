@@ -27,6 +27,14 @@ Ask Claude to build spreadsheets, write documents, and create presentations — 
 
 ![Apple Financial Report in Numbers](https://raw.githubusercontent.com/reichenbach/iwork_mcp/main/screenshots/financial-report.jpg)
 
+![Apple Q1 FY2026 Earnings — Executive Summary](https://raw.githubusercontent.com/reichenbach/iwork_mcp/main/screenshots/earnings-summary.jpg)
+
+![Apple Q1 FY2026 Earnings — Revenue by Product](https://raw.githubusercontent.com/reichenbach/iwork_mcp/main/screenshots/earnings-product.jpg)
+
+![Apple Q1 FY2026 Earnings — Geographic Revenue](https://raw.githubusercontent.com/reichenbach/iwork_mcp/main/screenshots/earnings-geographic.jpg)
+
+![Apple Q1 FY2026 Earnings — Profitability](https://raw.githubusercontent.com/reichenbach/iwork_mcp/main/screenshots/earnings-profitability.jpg)
+
 </details>
 
 ## Install
