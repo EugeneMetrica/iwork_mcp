@@ -104,6 +104,12 @@ const replacements: Replacement[] = [
     search: /(assert\.equal\(keynote\.length,) \d+\)/,
     replace: `$1 ${keynote})`,
   },
+  // src/install.ts success message
+  {
+    file: "src/install.ts",
+    search: /\d+ tools for Numbers, Pages, and Keynote/,
+    replace: `${total} tools for Numbers, Pages, and Keynote`,
+  },
   // MEMORY.md (absolute path, outside repo)
   {
     file: memoryPath,
