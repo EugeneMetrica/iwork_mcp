@@ -20,27 +20,27 @@ describe("Tool Registration", () => {
     assert.ok(instructions.includes("iWork"), "Instructions should mention iWork");
   });
 
-  it("registers all 78 tools", async () => {
+  it("registers all 86 tools", async () => {
     const { tools } = await ctx.client.listTools();
-    assert.equal(tools.length, 78);
+    assert.equal(tools.length, 86);
   });
 
-  it("registers 39 Numbers tools", async () => {
+  it("registers 42 Numbers tools", async () => {
     const { tools } = await ctx.client.listTools();
     const numbers = tools.filter((t) => t.name.startsWith("numbers_"));
-    assert.equal(numbers.length, 39);
+    assert.equal(numbers.length, 42);
   });
 
-  it("registers 16 Pages tools", async () => {
+  it("registers 18 Pages tools", async () => {
     const { tools } = await ctx.client.listTools();
     const pages = tools.filter((t) => t.name.startsWith("pages_"));
-    assert.equal(pages.length, 16);
+    assert.equal(pages.length, 18);
   });
 
-  it("registers 23 Keynote tools", async () => {
+  it("registers 26 Keynote tools", async () => {
     const { tools } = await ctx.client.listTools();
     const keynote = tools.filter((t) => t.name.startsWith("keynote_"));
-    assert.equal(keynote.length, 23);
+    assert.equal(keynote.length, 26);
   });
 
   it("every tool has a description", async () => {
@@ -81,6 +81,9 @@ describe("Tool Registration", () => {
       "numbers_insert_row_at",
       "numbers_insert_column_at",
       "numbers_format_range",
+      "numbers_magic_fill",
+      "numbers_super_resolution",
+      "numbers_remove_background",
     ];
     for (const name of expected) {
       assert.ok(names.has(name), `Missing tool: ${name}`);
@@ -98,6 +101,8 @@ describe("Tool Registration", () => {
       "pages_replace_text",
       "pages_close_document",
       "pages_create_document_with_content",
+      "pages_super_resolution",
+      "pages_remove_background",
     ];
     for (const name of expected) {
       assert.ok(names.has(name), `Missing tool: ${name}`);
@@ -116,6 +121,9 @@ describe("Tool Registration", () => {
       "keynote_set_presenter_notes",
       "keynote_close_presentation",
       "keynote_create_presentation_with_slides",
+      "keynote_clean_up_slide",
+      "keynote_super_resolution",
+      "keynote_remove_background",
     ];
     for (const name of expected) {
       assert.ok(names.has(name), `Missing tool: ${name}`);

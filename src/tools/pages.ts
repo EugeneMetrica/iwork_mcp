@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { runJXA, OsascriptError, isCreatorStudio, creatorStudioSaveAs, creatorStudioExportPDF } from "../jxa.js";
+import { runJXA, OsascriptError, isCreatorStudio, creatorStudioSaveAs, creatorStudioExportPDF, clickMenuItem, resolveAppName } from "../jxa.js";
 import { ANNOTATIONS } from "../annotations.js";
 
 function toolResult(text: string, isError = false) {
@@ -496,5 +496,67 @@ export function registerPagesTools(server: McpServer): void {
       paragraphs,
       filePath: filePath ?? null,
     })),
+  );
+
+  // ── Creator Studio Features (require subscription) ──
+
+  server.tool(
+    "pages_super_resolution",
+    "Upscale an image in a document using AI Super Resolution (Creator Studio only). Increases resolution while preserving quality.",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      imageIndex: z.number().int().min(1).describe("Image index (1-based) in the document"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, imageIndex }) => {
+      if (!isCreatorStudio()) {
+        return toolResult("Super Resolution requires Apple Creator Studio (iWork 15.1+).", true);
+      }
+      return handleJXA(async () => {
+        await runJXA<void>(`
+          const app = Application("Pages");
+          app.activate();
+          const doc = app.documents.byName(params.documentName);
+          const images = doc.images();
+          if (params.imageIndex > images.length) throw new Error("Image index " + params.imageIndex + " out of range (document has " + images.length + " images)");
+          app.selection = [images[params.imageIndex - 1]];
+        `, { documentName, imageIndex },
+        { label: "super_resolution:select" });
+
+        await clickMenuItem("Pages", ["Format", "Image", "Super Resolution"], { postdelay: 2 });
+
+        return JSON.stringify({ success: true, message: "Super Resolution started on image " + imageIndex + "." });
+      });
+    },
+  );
+
+  server.tool(
+    "pages_remove_background",
+    "Remove the background from an image in a document using AI (Creator Studio only).",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      imageIndex: z.number().int().min(1).describe("Image index (1-based) in the document"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, imageIndex }) => {
+      if (!isCreatorStudio()) {
+        return toolResult("Remove Background requires Apple Creator Studio (iWork 15.1+).", true);
+      }
+      return handleJXA(async () => {
+        await runJXA<void>(`
+          const app = Application("Pages");
+          app.activate();
+          const doc = app.documents.byName(params.documentName);
+          const images = doc.images();
+          if (params.imageIndex > images.length) throw new Error("Image index " + params.imageIndex + " out of range (document has " + images.length + " images)");
+          app.selection = [images[params.imageIndex - 1]];
+        `, { documentName, imageIndex },
+        { label: "remove_background:select" });
+
+        await clickMenuItem("Pages", ["Format", "Image", "Remove Background"], { postdelay: 2 });
+
+        return JSON.stringify({ success: true, message: "Background removal started on image " + imageIndex + "." });
+      });
+    },
   );
 }

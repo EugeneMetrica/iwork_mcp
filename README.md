@@ -1,6 +1,6 @@
 # iwork-mcp
 
-MCP server for Apple iWork automation — 78 tools for Numbers, Pages, and Keynote.
+MCP server for Apple iWork automation — 86 tools for Numbers, Pages, and Keynote.
 
 One line to install. Works with Claude Desktop, Claude Code, Codex, and any MCP client.
 
@@ -58,7 +58,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 - [Node.js 18+](https://nodejs.org) (`brew install node` if you have Homebrew)
 - On first use, macOS will ask to grant Automation permission — click OK
 
-> **iWork 15.1+ (Creator Studio)**: Fully supported. The new Creator Studio versions (January 2026) are auto-detected and used when available. See [Creator Studio known issues](#creator-studio-known-issues) below for export/save-as limitations.
+> **iWork 15.1+ (Creator Studio)**: Fully supported. The new Creator Studio versions (January 2026) are auto-detected and used when available. Creator Studio subscribers get 8 additional AI tools (Magic Fill, Clean Up Slide, Super Resolution, Remove Background). See [Creator Studio known issues](#creator-studio-known-issues) below for export/save-as limitations.
 
 ## Examples
 
@@ -74,7 +74,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 
 ## Tools
 
-### Numbers (39 tools)
+### Numbers (42 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -117,8 +117,11 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `numbers_set_row_height` | Set row height |
 | `numbers_format_range` | Apply multiple formatting rules to different cell ranges in one call |
 | `numbers_create_sheet_with_table` | Create a full sheet with table, data, and formatting in one fast call |
+| `numbers_magic_fill` | AI pattern fill — provide examples, fill remaining cells automatically (Creator Studio) |
+| `numbers_super_resolution` | AI image upscaling — increase resolution while preserving quality (Creator Studio) |
+| `numbers_remove_background` | AI background removal from images (Creator Studio) |
 
-### Pages (16 tools)
+### Pages (18 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -138,8 +141,10 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `pages_add_image` | Insert an image |
 | `pages_add_table` | Insert a table |
 | `pages_create_document_with_content` | Create a document with multiple formatted paragraphs in one fast call |
+| `pages_super_resolution` | AI image upscaling — increase resolution while preserving quality (Creator Studio) |
+| `pages_remove_background` | AI background removal from images (Creator Studio) |
 
-### Keynote (23 tools)
+### Keynote (26 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -166,6 +171,9 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `keynote_start_slideshow` | Start playing the presentation |
 | `keynote_stop_slideshow` | Stop the slideshow |
 | `keynote_create_presentation_with_slides` | Create a presentation with multiple fully-configured slides in one fast call |
+| `keynote_clean_up_slide` | AI slide cleanup — auto-adjust layout, spacing, alignment, and typography (Creator Studio) |
+| `keynote_super_resolution` | AI image upscaling — increase resolution while preserving quality (Creator Studio) |
+| `keynote_remove_background` | AI background removal from images (Creator Studio) |
 
 ## How it works
 
