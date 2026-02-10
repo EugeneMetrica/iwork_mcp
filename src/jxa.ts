@@ -1,4 +1,46 @@
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+
+// ── iWork app name resolution ──
+// iWork 15.1 "Creator Studio" ships as separate bundles (e.g. "Numbers Creator Studio.app").
+// Prefer Creator Studio when available; fall back to standard names.
+
+const IWORK_APPS = ["Numbers", "Pages", "Keynote"] as const;
+type IWorkApp = (typeof IWORK_APPS)[number];
+
+let resolvedNames: Record<IWorkApp, string> | undefined;
+
+function detectAppNames(): Record<IWorkApp, string> {
+  const result = {} as Record<IWorkApp, string>;
+  for (const app of IWORK_APPS) {
+    result[app] = existsSync(`/Applications/${app} Creator Studio.app`)
+      ? `${app} Creator Studio`
+      : app;
+  }
+  return result;
+}
+
+/** Resolve the JXA application name for an iWork app. */
+export function resolveAppName(app: IWorkApp): string {
+  resolvedNames ??= detectAppNames();
+  return resolvedNames[app];
+}
+
+/** Apply app-name substitutions to a script string. */
+function rewriteAppNames(script: string): string {
+  resolvedNames ??= detectAppNames();
+  let s = script;
+  for (const app of IWORK_APPS) {
+    const resolved = resolvedNames[app];
+    if (resolved === app) continue;
+    // JXA: Application("Numbers") → Application("Numbers Creator Studio")
+    s = s.replaceAll(`Application("${app}")`, `Application("${resolved}")`);
+    // AppleScript (used in Keynote master slide ops):
+    // application "Keynote" → application "Keynote Creator Studio"
+    s = s.replaceAll(`application "${app}"`, `application "${resolved}"`);
+  }
+  return s;
+}
 
 const COMMON_ERRORS: Record<number, string> = {
   [-1743]: "Permission denied. Open System Settings → Privacy & Security → Automation and allow this app to control the iWork application.",
@@ -65,7 +107,7 @@ function run(argv) {
 }
 `;
 
-  const args = ["-l", "JavaScript", "-e", fullScript];
+  const args = ["-l", "JavaScript", "-e", rewriteAppNames(fullScript)];
   if (params !== undefined) {
     args.push(JSON.stringify(params));
   }
