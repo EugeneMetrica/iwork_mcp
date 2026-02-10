@@ -49,8 +49,19 @@ export function registerKeynoteTools(server: McpServer): void {
   );
 
   server.tool(
+    "keynote_list_themes",
+    "List all available Keynote themes (e.g. White, Black, Gradient)",
+    {},
+    ANNOTATIONS.readOnly,
+    async () => handleJXA(() => runJXA<string[]>(`
+      const app = Application("Keynote");
+      return JSON.stringify(app.themes().map(t => t.name()));
+    `)),
+  );
+
+  server.tool(
     "keynote_create_presentation",
-    "Create a new Keynote presentation (blank or with a theme)",
+    "Create a new Keynote presentation (optionally with a theme — use keynote_list_themes to see available themes)",
     {
       themeName: z.string().optional().describe("Theme name (optional, e.g. 'White', 'Black', 'Gradient')"),
     },

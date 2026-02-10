@@ -49,8 +49,19 @@ export function registerPagesTools(server: McpServer): void {
   );
 
   server.tool(
+    "pages_list_templates",
+    "List all available Pages templates (e.g. Resume, Report, Letter, Flyer)",
+    {},
+    ANNOTATIONS.readOnly,
+    async () => handleJXA(() => runJXA<string[]>(`
+      const app = Application("Pages");
+      return JSON.stringify(app.templates().map(t => t.name()));
+    `)),
+  );
+
+  server.tool(
     "pages_create_document",
-    "Create a new blank Pages document (or from a template)",
+    "Create a new Pages document (optionally from a template — use pages_list_templates to see available templates)",
     {
       templateName: z.string().optional().describe("Template name (optional)"),
     },

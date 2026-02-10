@@ -20,27 +20,27 @@ describe("Tool Registration", () => {
     assert.ok(instructions.includes("iWork"), "Instructions should mention iWork");
   });
 
-  it("registers all 78 tools", async () => {
+  it("registers all 81 tools", async () => {
     const { tools } = await ctx.client.listTools();
-    assert.equal(tools.length, 78);
+    assert.equal(tools.length, 81);
   });
 
-  it("registers 39 Numbers tools", async () => {
+  it("registers 40 Numbers tools", async () => {
     const { tools } = await ctx.client.listTools();
     const numbers = tools.filter((t) => t.name.startsWith("numbers_"));
-    assert.equal(numbers.length, 39);
+    assert.equal(numbers.length, 40);
   });
 
-  it("registers 16 Pages tools", async () => {
+  it("registers 17 Pages tools", async () => {
     const { tools } = await ctx.client.listTools();
     const pages = tools.filter((t) => t.name.startsWith("pages_"));
-    assert.equal(pages.length, 16);
+    assert.equal(pages.length, 17);
   });
 
-  it("registers 23 Keynote tools", async () => {
+  it("registers 24 Keynote tools", async () => {
     const { tools } = await ctx.client.listTools();
     const keynote = tools.filter((t) => t.name.startsWith("keynote_"));
-    assert.equal(keynote.length, 23);
+    assert.equal(keynote.length, 24);
   });
 
   it("every tool has a description", async () => {
@@ -68,6 +68,7 @@ describe("Tool Registration", () => {
     const { tools } = await ctx.client.listTools();
     const names = new Set(tools.map((t) => t.name));
     const expected = [
+      "numbers_list_templates",
       "numbers_create_document",
       "numbers_read_cell",
       "numbers_write_cell",
@@ -91,6 +92,7 @@ describe("Tool Registration", () => {
     const { tools } = await ctx.client.listTools();
     const names = new Set(tools.map((t) => t.name));
     const expected = [
+      "pages_list_templates",
       "pages_create_document",
       "pages_get_body_text",
       "pages_get_paragraphs",
@@ -108,6 +110,7 @@ describe("Tool Registration", () => {
     const { tools } = await ctx.client.listTools();
     const names = new Set(tools.map((t) => t.name));
     const expected = [
+      "keynote_list_themes",
       "keynote_create_presentation",
       "keynote_list_slides",
       "keynote_add_slide",
@@ -141,10 +144,10 @@ describe("Tool Registration", () => {
 
   it("read-only tools have readOnlyHint: true", async () => {
     const readOnlyTools = [
-      "numbers_list_documents", "numbers_list_sheets", "numbers_list_tables",
+      "numbers_list_documents", "numbers_list_templates", "numbers_list_sheets", "numbers_list_tables",
       "numbers_read_table", "numbers_read_cell", "numbers_read_range", "numbers_get_table_info",
-      "pages_list_documents", "pages_get_body_text", "pages_get_paragraphs",
-      "keynote_list_presentations", "keynote_list_slides", "keynote_get_slide_content", "keynote_list_master_slides",
+      "pages_list_documents", "pages_list_templates", "pages_get_body_text", "pages_get_paragraphs",
+      "keynote_list_presentations", "keynote_list_themes", "keynote_list_slides", "keynote_get_slide_content", "keynote_list_master_slides",
     ];
     const { tools } = await ctx.client.listTools();
     const byName = new Map(tools.map((t) => [t.name, t]));

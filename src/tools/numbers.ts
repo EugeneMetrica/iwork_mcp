@@ -49,8 +49,19 @@ export function registerNumbersTools(server: McpServer): void {
   );
 
   server.tool(
+    "numbers_list_templates",
+    "List all available Numbers templates (e.g. Personal Budget, Invoice, Checklist)",
+    {},
+    ANNOTATIONS.readOnly,
+    async () => handleJXA(() => runJXA<string[]>(`
+      const app = Application("Numbers");
+      return JSON.stringify(app.templates().map(t => t.name()));
+    `)),
+  );
+
+  server.tool(
     "numbers_create_document",
-    "Create a new blank Numbers document",
+    "Create a new Numbers document (optionally from a template — use numbers_list_templates to see available templates)",
     {
       templateName: z.string().optional().describe("Template name (optional)"),
     },
