@@ -58,7 +58,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 - [Node.js 18+](https://nodejs.org) (`brew install node` if you have Homebrew)
 - On first use, macOS will ask to grant Automation permission — click OK
 
-> **iWork 15.1+ (Creator Studio)**: The new Creator Studio versions (January 2026) have different app bundles and bundle IDs. Compatibility is untested — if you encounter issues, use the classic 14.x versions from the Mac App Store.
+> **iWork 15.1+ (Creator Studio)**: Fully supported. The new Creator Studio versions (January 2026) are auto-detected and used when available. See [Creator Studio known issues](#creator-studio-known-issues) below for export/save-as limitations.
 
 ## Examples
 
@@ -227,6 +227,16 @@ iWork's scripting dictionary defines what's automatable — some features (chart
 - **No comments or track changes** — not exposed in the scripting dictionary
 - **Pages formatting** — paragraph formatting uses `bodyText.paragraphs` which supports font, size, and color; bold/italic require PostScript font names (e.g. `HelveticaNeue-Bold`); there is no direct bold/italic toggle
 - **First-use permission prompt** — macOS will ask to grant Automation access once
+
+### Creator Studio known issues
+
+iWork 15.1 Creator Studio has scripting bugs that iwork-mcp works around automatically:
+
+- **`app.export()` fails** with error (6) for all non-PDF formats — "document could not be exported". PDF export works via a Quick Look workaround (`qlmanage`). Non-PDF export formats (Excel, CSV, Word, EPUB, PowerPoint, HTML, images) are broken on Creator Studio with no known workaround.
+- **`doc.save()` hangs** and shows a popup dialog that never returns (both with and without a path argument). Save-as works via a file copy workaround (copies the auto-saved iCloud file, then closes and reopens from the new path). Plain save (no path) is handled by iCloud auto-save automatically.
+- **Auto-save renames documents** by appending file extensions (e.g. "Untitled" becomes "Untitled.numbers"), which breaks `documents.byName()` lookups. iwork-mcp injects name resolution that tries both the original and extended names, with automatic retry on transient failures during auto-save.
+
+All workarounds are applied automatically when Creator Studio is detected. If you need non-PDF export, use the classic iWork 14.x versions from the Mac App Store.
 
 ## License
 

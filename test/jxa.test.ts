@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { OsascriptError } from "../src/jxa.js";
+import { OsascriptError, injectDocumentNameResolution, isCreatorStudio } from "../src/jxa.js";
 
 describe("OsascriptError", () => {
   it("is an instance of Error", () => {
@@ -68,5 +68,94 @@ describe("OsascriptError", () => {
     const stderr = "execution error: blah (-1728)";
     const err = new OsascriptError(stderr, 1);
     assert.equal(err.stderr, stderr);
+  });
+});
+
+// Helper: build a script similar to what runJXA produces after rewriteAppNames
+function fakeScript(appName: string, usesDocName: boolean): string {
+  const paramsLine = "const params = JSON.parse(argv[0]);";
+  const body = usesDocName
+    ? `const app = Application("${appName}"); const doc = app.documents.byName(params.documentName);`
+    : `const app = Application("${appName}"); return app.documents().length;`;
+  return `\nfunction run(argv) {\n  ${paramsLine}\n  ${body}\n}\n`;
+}
+
+describe("injectDocumentNameResolution", () => {
+  it("injects resolution block for Numbers Creator Studio", () => {
+    const script = fakeScript("Numbers Creator Studio", true);
+    const result = injectDocumentNameResolution(script);
+    assert.ok(result.includes("[iwork-mcp] Creator Studio document name resolution"));
+    assert.ok(result.includes('Application("Numbers Creator Studio")'));
+    assert.ok(result.includes('".numbers"'));
+  });
+
+  it("injects resolution block for Pages Creator Studio", () => {
+    const script = fakeScript("Pages Creator Studio", true);
+    const result = injectDocumentNameResolution(script);
+    assert.ok(result.includes("[iwork-mcp] Creator Studio document name resolution"));
+    assert.ok(result.includes('".pages"'));
+  });
+
+  it("injects resolution block for Keynote Creator Studio", () => {
+    const script = fakeScript("Keynote Creator Studio", true);
+    const result = injectDocumentNameResolution(script);
+    assert.ok(result.includes("[iwork-mcp] Creator Studio document name resolution"));
+    assert.ok(result.includes('".key"'));
+  });
+
+  it("does not inject when params.documentName is absent", () => {
+    const script = fakeScript("Numbers Creator Studio", false);
+    const result = injectDocumentNameResolution(script);
+    assert.equal(result, script);
+  });
+
+  it("does not inject when no recognizable app is in the script", () => {
+    const script = `\nfunction run(argv) {\n  const params = JSON.parse(argv[0]);\n  const app = Application("Safari"); app.documents.byName(params.documentName);\n}\n`;
+    const result = injectDocumentNameResolution(script);
+    assert.equal(result, script);
+  });
+
+  it("does not inject when the params anchor line is missing", () => {
+    const script = `\nfunction run(argv) {\n  const app = Application("Numbers Creator Studio"); app.documents.byName(params.documentName);\n}\n`;
+    const result = injectDocumentNameResolution(script);
+    assert.equal(result, script);
+  });
+
+  it("injected code is syntactically valid JavaScript", () => {
+    const script = fakeScript("Numbers Creator Studio", true);
+    const result = injectDocumentNameResolution(script);
+    // Should not throw when parsed as a function
+    assert.doesNotThrow(() => new Function(result));
+  });
+
+  it("injects after the params line, before the script body", () => {
+    const script = fakeScript("Numbers Creator Studio", true);
+    const result = injectDocumentNameResolution(script);
+    const paramsIdx = result.indexOf("const params = JSON.parse(argv[0]);");
+    const injectionIdx = result.indexOf("[iwork-mcp] Creator Studio document name resolution");
+    const bodyIdx = result.indexOf("const doc = app.documents.byName(params.documentName)");
+    assert.ok(paramsIdx < injectionIdx, "injection should come after params line");
+    assert.ok(injectionIdx < bodyIdx, "injection should come before script body");
+  });
+
+  it("isCreatorStudio returns a boolean", () => {
+    const result = isCreatorStudio();
+    assert.equal(typeof result, "boolean");
+  });
+
+  it("uses correct extension per app", () => {
+    const cases: Array<[string, string]> = [
+      ["Numbers Creator Studio", ".numbers"],
+      ["Pages Creator Studio", ".pages"],
+      ["Keynote Creator Studio", ".key"],
+    ];
+    for (const [appName, ext] of cases) {
+      const script = fakeScript(appName, true);
+      const result = injectDocumentNameResolution(script);
+      assert.ok(
+        result.includes(`params.documentName + ${JSON.stringify(ext)}`),
+        `expected extension ${ext} for ${appName}`,
+      );
+    }
   });
 });

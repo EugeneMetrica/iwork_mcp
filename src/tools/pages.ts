@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { runJXA, OsascriptError } from "../jxa.js";
+import { runJXA, OsascriptError, isCreatorStudio, creatorStudioSaveAs, creatorStudioExportPDF } from "../jxa.js";
 import { ANNOTATIONS } from "../annotations.js";
 
 function toolResult(text: string, isError = false) {
@@ -13,6 +13,19 @@ async function handleJXA<T>(fn: () => Promise<T>): Promise<{ content: { type: "t
     const text = typeof result === "string" ? result : JSON.stringify(result, null, 2);
     return toolResult(text);
   } catch (err) {
+    // Creator Studio auto-save can rename documents mid-operation, causing transient -1728.
+    // Retry once so the document name resolution injection picks up the new name.
+    if (err instanceof OsascriptError && err.appleScriptErrorCode === -1728 && isCreatorStudio()) {
+      await new Promise(r => setTimeout(r, 500));
+      try {
+        const result = await fn();
+        const text = typeof result === "string" ? result : JSON.stringify(result, null, 2);
+        return toolResult(text);
+      } catch (retryErr) {
+        if (retryErr instanceof OsascriptError) return toolResult(retryErr.message, true);
+        return toolResult(String(retryErr), true);
+      }
+    }
     if (err instanceof OsascriptError) {
       return toolResult(err.message, true);
     }
@@ -78,7 +91,15 @@ export function registerPagesTools(server: McpServer): void {
       filePath: z.string().startsWith("/").optional().describe("File path to save to (for Save As)"),
     },
     ANNOTATIONS.readWrite,
-    async ({ documentName, filePath }) => handleJXA(() => runJXA<string>(`
+    async ({ documentName, filePath }) => handleJXA(async () => {
+      if (isCreatorStudio()) {
+        if (filePath) {
+          const newName = await creatorStudioSaveAs("Pages", documentName, filePath);
+          return JSON.stringify({ saved: true, name: newName });
+        }
+        return JSON.stringify({ saved: true, name: documentName });
+      }
+      return runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
       if (params.filePath) {
@@ -90,7 +111,8 @@ export function registerPagesTools(server: McpServer): void {
         doc.save();
       }
       return JSON.stringify({ saved: true, name: doc.name() });
-    `, { documentName, filePath: filePath ?? null })),
+    `, { documentName, filePath: filePath ?? null });
+    }),
   );
 
   server.tool(
@@ -102,7 +124,12 @@ export function registerPagesTools(server: McpServer): void {
       format: z.enum(["PDF", "Word", "EPUB", "Text"]).describe("Export format"),
     },
     ANNOTATIONS.readWrite,
-    async ({ documentName, filePath, format }) => handleJXA(() => runJXA<string>(`
+    async ({ documentName, filePath, format }) => handleJXA(async () => {
+      if (isCreatorStudio() && format === "PDF") {
+        await creatorStudioExportPDF("Pages", documentName, filePath);
+        return JSON.stringify({ exported: true, path: filePath, format: "PDF" });
+      }
+      return runJXA<string>(`
       const app = Application("Pages");
       const doc = app.documents.byName(params.documentName);
       const formatMap = {
@@ -114,7 +141,8 @@ export function registerPagesTools(server: McpServer): void {
       const fmt = formatMap[params.format];
       app.export(doc, { to: Path(params.filePath), as: fmt });
       return JSON.stringify({ exported: true, path: params.filePath, format: params.format });
-    `, { documentName, filePath, format })),
+    `, { documentName, filePath, format });
+    }),
   );
 
   server.tool(
