@@ -8,11 +8,11 @@ One line to install. Works with Claude Desktop, Claude Code, Codex, and any MCP 
 
 Ask Claude to build spreadsheets, write documents, and create presentations — it controls the real iWork apps on your Mac through Apple's JavaScript for Automation (JXA) scripting bridge.
 
-![Monthly Budget in Numbers](screenshots/budget.jpg)
+![Monthly Budget in Numbers](https://raw.githubusercontent.com/reichenbach/iwork_mcp/main/screenshots/budget.jpg)
 
-![Professional Resume in Pages](screenshots/resume-v2.jpg)
+![Professional Resume in Pages](https://raw.githubusercontent.com/reichenbach/iwork_mcp/main/screenshots/resume-v2.jpg)
 
-![Q4 Business Review in Keynote](screenshots/pitch.jpg)
+![Q4 Business Review in Keynote](https://raw.githubusercontent.com/reichenbach/iwork_mcp/main/screenshots/pitch.jpg)
 
 **Numbers** — Browse built-in templates (budget, invoice, schedule, etc.) or create from scratch, read/write cells and ranges, set formulas (including cross-sheet references like SUMIFS), sort rows, merge cells, format cells (fonts, colors, backgrounds, alignment, number formats like percent and currency), manage sheets and tables, set column widths and row heights, bulk-create sheets with data and formatting in one call, export to PDF/Excel/CSV.
 
@@ -23,9 +23,9 @@ Ask Claude to build spreadsheets, write documents, and create presentations — 
 <details>
 <summary>More examples</summary>
 
-![2026 Calendar in Numbers](screenshots/calendar.jpg)
+![2026 Calendar in Numbers](https://raw.githubusercontent.com/reichenbach/iwork_mcp/main/screenshots/calendar.jpg)
 
-![Apple Financial Report in Numbers](screenshots/financial-report.jpg)
+![Apple Financial Report in Numbers](https://raw.githubusercontent.com/reichenbach/iwork_mcp/main/screenshots/financial-report.jpg)
 
 </details>
 
