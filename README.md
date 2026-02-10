@@ -14,11 +14,11 @@ Ask Claude to build spreadsheets, write documents, and create presentations — 
 
 ![Q4 Business Review in Keynote](screenshots/pitch.jpg)
 
-**Numbers** — Create spreadsheets, read/write cells and ranges, set formulas (including cross-sheet references like SUMIFS), sort rows, merge cells, format cells (fonts, colors, backgrounds, alignment, number formats like percent and currency), manage sheets and tables, set column widths and row heights, bulk-create sheets with data and formatting in one call, export to PDF/Excel/CSV.
+**Numbers** — Browse built-in templates (budget, invoice, schedule, etc.) or create from scratch, read/write cells and ranges, set formulas (including cross-sheet references like SUMIFS), sort rows, merge cells, format cells (fonts, colors, backgrounds, alignment, number formats like percent and currency), manage sheets and tables, set column widths and row heights, bulk-create sheets with data and formatting in one call, export to PDF/Excel/CSV.
 
-**Pages** — Create documents with formatted content in one call, read and insert text at any position, find and replace (preserves formatting), format paragraphs (font, size, color), insert images and tables, export to PDF/Word/EPUB.
+**Pages** — Browse built-in templates (resume, report, letter, flyer, newsletter, etc.) or create from scratch, create documents with formatted content in one call, read and insert text at any position, find and replace (preserves formatting), format paragraphs (font, size, color), insert images and tables, export to PDF/Word/EPUB.
 
-**Keynote** — Create presentations with multiple fully-configured slides in one call (theme, layouts, titles, body, notes, transitions), add/delete/duplicate/reorder/skip slides, choose slide layouts from master slides, read slide content, set titles and bullet points, add images and shapes, start/stop slideshows, export to PDF/PowerPoint/HTML.
+**Keynote** — Browse available themes or create with a specific theme, create presentations with multiple fully-configured slides in one call (layouts, titles, body, notes, transitions), add/delete/duplicate/reorder/skip slides, choose slide layouts from master slides, read slide content, set titles and bullet points, add images and shapes, start/stop slideshows, export to PDF/PowerPoint/HTML.
 
 <details>
 <summary>More examples</summary>
