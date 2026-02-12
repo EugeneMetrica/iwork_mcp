@@ -67,4 +67,4 @@
 - Screenshots must be JPEG not PNG — large PNGs cause 503 errors on GitHub README rendering
 
 ## Known Issues
-- **BROKEN**: 6 Pages text tools use `doc.paragraphs` which fails on Pages 14.5: pages_add_text, pages_get_paragraphs, pages_format_text, pages_insert_text_at, pages_delete_text, pages_replace_text. Need rewrite to use bodyText string manipulation (format_text has no fix — only compound tool can format).
+- All 6 Pages text tools (pages_add_text, pages_get_paragraphs, pages_format_text, pages_insert_text_at, pages_delete_text, pages_replace_text) work via `doc.bodyText.paragraphs` workarounds. The original `doc.paragraphs` API remains broken on Pages 14.5.

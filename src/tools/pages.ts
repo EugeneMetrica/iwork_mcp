@@ -282,12 +282,13 @@ export function registerPagesTools(server: McpServer): void {
       const lines = bt.split("\\n");
       const insertIdx = params.afterParagraph < 0 ? 0 : params.afterParagraph + 1;
       const newText = params.text.endsWith("\\n") ? params.text.slice(0, -1) : params.text;
+      const nlCount = (newText.match(/\\n/g) || []).length;
       lines.splice(insertIdx, 0, newText);
       doc.bodyText = lines.join("\\n");
-      // Restore formatting (shift indices after insert point)
+      // Restore formatting (shift indices after insert point by number of new paragraphs)
       for (let i = 0; i < formats.length; i++) {
         if (!formats[i]) continue;
-        const newIdx = i < insertIdx ? i : i + 1;
+        const newIdx = i < insertIdx ? i : i + nlCount + 1;
         try {
           const p = doc.bodyText.paragraphs[newIdx];
           p.font = formats[i].font;

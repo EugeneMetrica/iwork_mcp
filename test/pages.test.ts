@@ -90,6 +90,71 @@ describe("Pages Integration", async () => {
     assert.ok(!body.text.includes("Appended paragraph"));
   });
 
+  // ── Format text ──
+
+  it("formats a paragraph", async () => {
+    const { json } = await call(ctx, "pages_format_text", {
+      documentName: docName,
+      paragraphIndex: 0,
+      format: { fontName: "Georgia-Bold", fontSize: 28, textColor: "#FF0000" },
+    });
+    assert.ok(json.formatted);
+
+    const { json: paragraphs } = await call(ctx, "pages_get_paragraphs", { documentName: docName });
+    const first = paragraphs[0];
+    assert.equal(first.font, "Georgia-Bold");
+    assert.equal(first.size, 28);
+  });
+
+  // ── Insert text at position ──
+
+  it("inserts text at beginning and middle", async () => {
+    // Insert at beginning (afterParagraph = -1)
+    const { json: r1 } = await call(ctx, "pages_insert_text_at", {
+      documentName: docName,
+      text: "Inserted at beginning.\n",
+      afterParagraph: -1,
+    });
+    assert.ok(r1.inserted);
+
+    const { json: body1 } = await call(ctx, "pages_get_body_text", { documentName: docName });
+    const lines1 = body1.text.split("\n").filter((l: string) => l.length > 0);
+    assert.equal(lines1[0], "Inserted at beginning.");
+
+    // Insert after paragraph 1 (middle)
+    const { json: r2 } = await call(ctx, "pages_insert_text_at", {
+      documentName: docName,
+      text: "Inserted in middle.\n",
+      afterParagraph: 1,
+    });
+    assert.ok(r2.inserted);
+
+    const { json: body2 } = await call(ctx, "pages_get_body_text", { documentName: docName });
+    const lines2 = body2.text.split("\n").filter((l: string) => l.length > 0);
+    assert.equal(lines2[2], "Inserted in middle.");
+  });
+
+  // ── Delete text ──
+
+  it("deletes a paragraph by index", async () => {
+    // Get current paragraphs to know what we're deleting
+    const { json: before } = await call(ctx, "pages_get_paragraphs", { documentName: docName });
+    const countBefore = before.length;
+    const deletedText = before[0].text;
+
+    const { json } = await call(ctx, "pages_delete_text", {
+      documentName: docName,
+      paragraphIndex: 0,
+    });
+    assert.ok(json.deleted);
+
+    const { json: body } = await call(ctx, "pages_get_body_text", { documentName: docName });
+    assert.ok(!body.text.startsWith(deletedText));
+
+    const { json: afterParas } = await call(ctx, "pages_get_paragraphs", { documentName: docName });
+    assert.ok(afterParas.length < countBefore);
+  });
+
   // ── Export to PDF ──
 
   it("exports to PDF", async () => {
