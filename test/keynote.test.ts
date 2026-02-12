@@ -1,5 +1,6 @@
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
+import { unlinkSync } from "node:fs";
 import { createTestServer, type TestContext } from "./helpers/server.js";
 import { isAppAvailable } from "./helpers/app-check.js";
 
@@ -21,6 +22,7 @@ describe("Keynote Integration", async () => {
   let ctx: TestContext;
   let docName: string;
   const suffix = Date.now();
+  const tmpFiles: string[] = [];
 
   before(async () => {
     ctx = await createTestServer();
@@ -28,10 +30,16 @@ describe("Keynote Integration", async () => {
 
   after(async () => {
     if (ctx) {
-      if (docName) {
-        try {
-          await call(ctx, "keynote_close_presentation", { documentName: docName, saving: "no" });
-        } catch {}
+      // Close ALL open Keynote presentations (catches leaked test docs)
+      try {
+        const { json: docs } = await call(ctx, "keynote_list_presentations");
+        for (const doc of docs as Array<{ name: string }>) {
+          try { await call(ctx, "keynote_close_presentation", { documentName: doc.name, saving: "no" }); } catch {}
+        }
+      } catch {}
+      // Clean up temp files
+      for (const f of tmpFiles) {
+        try { unlinkSync(f); } catch {}
       }
       await ctx.cleanup();
     }
@@ -284,6 +292,7 @@ describe("Keynote Integration", async () => {
 
   it("exports to PDF", async () => {
     const tmpPath = `/tmp/iwork_test_${suffix}.pdf`;
+    tmpFiles.push(tmpPath);
     const { json } = await call(ctx, "keynote_export_presentation", {
       documentName: docName,
       filePath: tmpPath,

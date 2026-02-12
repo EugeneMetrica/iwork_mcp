@@ -1,5 +1,6 @@
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
+import { unlinkSync } from "node:fs";
 import { createTestServer, type TestContext } from "./helpers/server.js";
 import { isAppAvailable } from "./helpers/app-check.js";
 
@@ -21,6 +22,7 @@ describe("Pages Integration", async () => {
   let ctx: TestContext;
   let docName: string;
   const suffix = Date.now();
+  const tmpFiles: string[] = [];
 
   before(async () => {
     ctx = await createTestServer();
@@ -28,10 +30,16 @@ describe("Pages Integration", async () => {
 
   after(async () => {
     if (ctx) {
-      if (docName) {
-        try {
-          await call(ctx, "pages_close_document", { documentName: docName, saving: "no" });
-        } catch {}
+      // Close ALL open Pages documents (catches leaked test docs)
+      try {
+        const { json: docs } = await call(ctx, "pages_list_documents");
+        for (const doc of docs as Array<{ name: string }>) {
+          try { await call(ctx, "pages_close_document", { documentName: doc.name, saving: "no" }); } catch {}
+        }
+      } catch {}
+      // Clean up temp files
+      for (const f of tmpFiles) {
+        try { unlinkSync(f); } catch {}
       }
       await ctx.cleanup();
     }
@@ -181,6 +189,7 @@ describe("Pages Integration", async () => {
 
   it("exports to PDF", async () => {
     const tmpPath = `/tmp/iwork_test_${suffix}.pdf`;
+    tmpFiles.push(tmpPath);
     const { json } = await call(ctx, "pages_export_document", {
       documentName: docName,
       filePath: tmpPath,
@@ -194,6 +203,7 @@ describe("Pages Integration", async () => {
 
   it("saves, closes, and reopens a document", async () => {
     const tmpPath = `/tmp/iwork_test_reopen_${suffix}.pages`;
+    tmpFiles.push(tmpPath);
 
     const { json: saveResult } = await call(ctx, "pages_save_document", {
       documentName: docName,

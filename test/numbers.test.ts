@@ -1,5 +1,6 @@
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
+import { unlinkSync } from "node:fs";
 import { createTestServer, type TestContext } from "./helpers/server.js";
 import { isAppAvailable } from "./helpers/app-check.js";
 
@@ -22,6 +23,7 @@ describe("Numbers Integration", async () => {
   let ctx: TestContext;
   let docName: string;
   const suffix = Date.now();
+  const tmpFiles: string[] = [];
 
   before(async () => {
     ctx = await createTestServer();
@@ -29,11 +31,16 @@ describe("Numbers Integration", async () => {
 
   after(async () => {
     if (ctx) {
-      // Attempt cleanup: close any test documents
-      if (docName) {
-        try {
-          await call(ctx, "numbers_close_document", { documentName: docName, saving: "no" });
-        } catch {}
+      // Close ALL open Numbers documents (catches leaked test docs)
+      try {
+        const { json: docs } = await call(ctx, "numbers_list_documents");
+        for (const doc of docs as Array<{ name: string }>) {
+          try { await call(ctx, "numbers_close_document", { documentName: doc.name, saving: "no" }); } catch {}
+        }
+      } catch {}
+      // Clean up temp files
+      for (const f of tmpFiles) {
+        try { unlinkSync(f); } catch {}
       }
       await ctx.cleanup();
     }
@@ -344,6 +351,7 @@ describe("Numbers Integration", async () => {
 
   it("saves, closes, and reopens a document", async () => {
     const tmpPath = `/tmp/iwork_test_${suffix}.numbers`;
+    tmpFiles.push(tmpPath);
     await call(ctx, "numbers_write_cell", { documentName: docName, cellRef: "A1", value: "persist" });
 
     const { json: saveResult } = await call(ctx, "numbers_save_document", {
