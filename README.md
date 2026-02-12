@@ -8,11 +8,11 @@ One line to install. Works with Claude Desktop, Claude Code, Codex, and any MCP 
 
 Ask Claude to build spreadsheets, write documents, and create presentations — it controls the real iWork apps on your Mac through Apple's JavaScript for Automation (JXA) scripting bridge.
 
-![Monthly Budget in Numbers](https://raw.githubusercontent.com/reichenbach/iwork_mcp/main/screenshots/budget.jpg)
+![Q4 Revenue Dashboard in Numbers](https://raw.githubusercontent.com/reichenbach/iwork_mcp/main/screenshots/numbers-dashboard.jpg)
 
-![Professional Resume in Pages](https://raw.githubusercontent.com/reichenbach/iwork_mcp/main/screenshots/resume-v2.jpg)
+![Product Brief in Pages](https://raw.githubusercontent.com/reichenbach/iwork_mcp/main/screenshots/pages-brief.jpg)
 
-![Q4 Business Review in Keynote](https://raw.githubusercontent.com/reichenbach/iwork_mcp/main/screenshots/pitch.jpg)
+![Presentation Deck in Keynote](https://raw.githubusercontent.com/reichenbach/iwork_mcp/main/screenshots/keynote-deck.jpg)
 
 **Numbers** — Browse built-in templates (budget, invoice, schedule, etc.) or create from scratch, read/write cells and ranges, set formulas (including cross-sheet references like SUMIFS), sort rows, merge cells, format cells (fonts, colors, backgrounds, alignment, number formats like percent and currency), manage sheets and tables, set column widths and row heights, bulk-create sheets with data and formatting in one call, export to PDF/Excel/CSV.
 
