@@ -214,6 +214,13 @@ export function registerPagesTools(server: McpServer): void {
         const entry = { index: i, text: text };
         try { entry.font = p.font(); } catch(e) {}
         try { entry.size = p.size(); } catch(e) {}
+        try {
+          const c = p.color();
+          if (Array.isArray(c) && c.length >= 3) {
+            const toHex = (v) => Math.round(v * 255).toString(16).padStart(2, "0");
+            entry.color = "#" + toHex(c[0]) + toHex(c[1]) + toHex(c[2]);
+          }
+        } catch(e) {}
         result.push(entry);
       }
       return JSON.stringify(result);

@@ -57,7 +57,7 @@
 - `npm run test:integration` — CRUD tests for Numbers/Pages/Keynote, ~8s, needs apps
 - `npm run test:all` — both tiers combined
 - Uses `node:test` + `tsx`, in-memory MCP transport (no subprocess)
-- 74 tests total: 34 unit + 40 integration
+- 77 tests total: 34 unit + 43 integration
 
 ## Build & Publish
 - `npm run build` -> `tsc && chmod +x dist/index.js`

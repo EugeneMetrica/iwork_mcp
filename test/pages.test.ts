@@ -104,6 +104,14 @@ describe("Pages Integration", async () => {
     const first = paragraphs[0];
     assert.equal(first.font, "Georgia-Bold");
     assert.equal(first.size, 28);
+    // Color roundtrip is lossy due to JXA color space conversion — verify it's approximately red
+    assert.ok(first.color, "color should be present");
+    const r = parseInt(first.color.slice(1, 3), 16);
+    const g = parseInt(first.color.slice(3, 5), 16);
+    const b = parseInt(first.color.slice(5, 7), 16);
+    assert.ok(r > 200, `red channel ${r} should be high`);
+    assert.ok(g < 20, `green channel ${g} should be low`);
+    assert.ok(b < 20, `blue channel ${b} should be low`);
   });
 
   // ── Insert text at position ──
