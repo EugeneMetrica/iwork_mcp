@@ -84,6 +84,12 @@ describe("Pages Integration", async () => {
     assert.equal(typeof json.modified, "boolean");
   });
 
+  it("lists images (empty document)", async () => {
+    const { json } = await call(ctx, "pages_list_images", { documentName: docName });
+    assert.ok(Array.isArray(json));
+    assert.equal(json.length, 0, "New document should have no images");
+  });
+
   it("appends text", async () => {
     const { json } = await call(ctx, "pages_add_text", {
       documentName: docName,

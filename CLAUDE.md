@@ -3,7 +3,7 @@
 ## Project Overview
 - MCP server for Apple iWork (Numbers, Pages, Keynote) automation via JXA/osascript
 - TypeScript, ESM, uses `@modelcontextprotocol/sdk` v1.26.0
-- 109 tools total: 48 Numbers, 21 Pages, 40 Keynote (includes 8 Creator Studio AI tools)
+- 113 tools total: 50 Numbers, 22 Pages, 41 Keynote (includes 8 Creator Studio AI tools)
 - npm: `iwork-mcp` | GitHub: `reichenbach/iwork_mcp` (PRIVATE)
 - Requirements: macOS 13+, iWork 14.0+, Node.js 18+
 - Supports both standard iWork and iWork 15.1 "Creator Studio" app bundles
@@ -62,7 +62,7 @@
 - `npm run test:integration` — CRUD tests for Numbers/Pages/Keynote, ~8s, needs apps
 - `npm run test:all` — both tiers combined
 - Uses `node:test` + `tsx`, in-memory MCP transport (no subprocess)
-- 91 tests total: 34 unit + 57 integration
+- 95 tests total: 34 unit + 61 integration
 
 ## Build & Publish
 - `npm run build` -> `tsc && chmod +x dist/index.js`

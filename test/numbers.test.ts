@@ -555,6 +555,52 @@ describe("Numbers Integration", async () => {
     assert.ok(listResult[0].height > 0);
   });
 
+  // ── Cell format and table position tests ──
+
+  it("reads cell format back after setting it", async () => {
+    const sheet = `CellFmt_${suffix}`;
+    await call(ctx, "numbers_create_sheet_with_table", {
+      documentName: docName,
+      sheetName: sheet,
+      tableName: sheet,
+      data: [["a", "b"], ["c", "d"]],
+    });
+
+    // Set a cell to percent format
+    await call(ctx, "numbers_write_cell", { documentName: docName, cellRef: "A1", value: 0.45, sheetName: sheet, tableName: sheet });
+    await call(ctx, "numbers_format_cells", { documentName: docName, cellRange: "A1", format: { numberFormat: "percent" }, sheetName: sheet, tableName: sheet });
+
+    const { json } = await call(ctx, "numbers_get_cell_format", {
+      documentName: docName,
+      cellRef: "A1",
+      sheetName: sheet,
+      tableName: sheet,
+    });
+    assert.equal(json.cellRef, "A1");
+    assert.equal(json.format, "percent");
+  });
+
+  it("moves a table to a new position", async () => {
+    const sheet = `MoveTbl_${suffix}`;
+    await call(ctx, "numbers_create_sheet_with_table", {
+      documentName: docName,
+      sheetName: sheet,
+      tableName: sheet,
+      data: [["x", "y"], [1, 2]],
+    });
+
+    const { json } = await call(ctx, "numbers_move_table", {
+      documentName: docName,
+      x: 200,
+      y: 300,
+      sheetName: sheet,
+      tableName: sheet,
+    });
+    assert.ok(json.moved);
+    assert.ok(Math.abs(json.position.x - 200) < 2, `Expected x~200, got ${json.position.x}`);
+    assert.ok(Math.abs(json.position.y - 300) < 2, `Expected y~300, got ${json.position.y}`);
+  });
+
   // ── Error on invalid document ──
 
   it("returns isError for a nonexistent document", async () => {

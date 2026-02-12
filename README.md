@@ -1,6 +1,6 @@
 # iwork-mcp
 
-MCP server for Apple iWork automation — 109 tools for Numbers, Pages, and Keynote.
+MCP server for Apple iWork automation — 113 tools for Numbers, Pages, and Keynote.
 
 One line to install. Works with Claude Desktop, Claude Code, Codex, and any MCP client.
 
@@ -82,7 +82,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 
 ## Tools
 
-### Numbers (48 tools)
+### Numbers (50 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -104,7 +104,9 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `numbers_read_table` | Read all data as a 2D array |
 | `numbers_read_cell` | Read a single cell |
 | `numbers_read_range` | Read a specific cell range |
-| `numbers_get_table_info` | Get table metadata |
+| `numbers_get_table_info` | Get table metadata (name, dimensions, position) |
+| `numbers_get_cell_format` | Read a cell's number format and alignment |
+| `numbers_move_table` | Move a table to a new position on the sheet |
 | `numbers_write_cell` | Write a value to a cell |
 | `numbers_write_cells` | Batch write multiple cells |
 | `numbers_write_table` | Bulk write a 2D array (fast) |
@@ -135,7 +137,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `numbers_super_resolution` | AI image upscaling — increase resolution while preserving quality (Creator Studio) |
 | `numbers_remove_background` | AI background removal from images (Creator Studio) |
 
-### Pages (21 tools)
+### Pages (22 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -149,6 +151,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `pages_get_body_text` | Read all body text |
 | `pages_get_paragraphs` | Get paragraphs as indexed array |
 | `pages_get_document_info` | Get word count, character count, page count, modified status |
+| `pages_list_images` | List all images in a document with positions and sizes |
 | `pages_add_text` | Append text (preserves formatting) |
 | `pages_insert_text_at` | Insert text at a paragraph index |
 | `pages_delete_text` | Delete a paragraph |
@@ -161,7 +164,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `pages_super_resolution` | AI image upscaling — increase resolution while preserving quality (Creator Studio) |
 | `pages_remove_background` | AI background removal from images (Creator Studio) |
 
-### Keynote (40 tools)
+### Keynote (41 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -197,6 +200,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `keynote_add_table_to_slide` | Add a table to a slide with optional data |
 | `keynote_read_slide_table` | Read all data from a table on a slide |
 | `keynote_write_slide_table` | Write data to cells of an existing table on a slide |
+| `keynote_format_slide_table` | Format cells in a slide table (text color, number format) |
 | `keynote_set_presenter_notes` | Set presenter notes |
 | `keynote_set_transition` | Set slide transition effect |
 | `keynote_start_slideshow` | Start playing the presentation |

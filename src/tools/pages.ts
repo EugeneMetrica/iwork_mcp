@@ -251,6 +251,32 @@ export function registerPagesTools(server: McpServer): void {
     `, { documentName })),
   );
 
+  server.tool(
+    "pages_list_images",
+    "List all images in a Pages document with their positions and sizes",
+    {
+      documentName: z.string().describe("Name of the open document"),
+    },
+    ANNOTATIONS.readOnly,
+    async ({ documentName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Pages");
+      const doc = app.documents.byName(params.documentName);
+      const imgs = doc.images();
+      var result = [];
+      for (var i = 0; i < imgs.length; i++) {
+        var img = imgs[i];
+        var entry = { index: i };
+        try { entry.width = img.width(); } catch(e) {}
+        try { entry.height = img.height(); } catch(e) {}
+        try { var p = img.position(); entry.position = { x: p.x || p[0] || 0, y: p.y || p[1] || 0 }; } catch(e) {}
+        try { entry.fileName = img.fileName(); } catch(e) {}
+        try { entry.description = img.objectDescription(); } catch(e) {}
+        result.push(entry);
+      }
+      return JSON.stringify(result);
+    `, { documentName })),
+  );
+
   // ── Text Writing Tools ──
 
   server.tool(

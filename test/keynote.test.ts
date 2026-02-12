@@ -392,6 +392,31 @@ describe("Keynote Integration", async () => {
     assert.equal(readResult.data[1][1], 95);
   });
 
+  // ── Format slide table ──
+
+  it("formats cells in a slide table", async () => {
+    // Add a slide with a table for formatting
+    await call(ctx, "keynote_add_slide", { documentName: docName });
+    const { json: slides } = await call(ctx, "keynote_list_slides", { documentName: docName });
+    const fmtSlide = slides.length;
+
+    await call(ctx, "keynote_add_table_to_slide", {
+      documentName: docName,
+      slideNumber: fmtSlide,
+      data: [["Header", "Value"], ["Item", 42]],
+    });
+
+    const { json } = await call(ctx, "keynote_format_slide_table", {
+      documentName: docName,
+      slideNumber: fmtSlide,
+      tableIndex: 0,
+      cellRange: "A1:B1",
+      format: { textColor: "#FF0000" },
+    });
+    assert.ok(json.formatted);
+    assert.equal(json.cellsFormatted, 2);
+  });
+
   // ── Add line ──
 
   it("adds a line to a slide", async () => {

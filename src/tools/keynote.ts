@@ -1093,6 +1093,66 @@ export function registerKeynoteTools(server: McpServer): void {
     `, { documentName, slideNumber, tableIndex: tableIndex ?? 0, data })),
   );
 
+  server.tool(
+    "keynote_format_slide_table",
+    "Format cells in a table on a slide (text color, number format)",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+      slideNumber: z.number().int().min(1).describe("Slide number (1-based)"),
+      tableIndex: z.number().int().min(0).optional().describe("Table index on the slide (0-based, default: 0)"),
+      cellRange: z.string().regex(/^[A-Z]{1,3}\d+(?::[A-Z]{1,3}\d+)?$/).describe("Cell or range reference, e.g. 'A1' or 'A1:C3'"),
+      format: z.object({
+        textColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().describe("Text color as hex, e.g. '#FF0000'"),
+        numberFormat: z.enum(["automatic", "number", "currency", "percent", "fraction", "scientific", "text"]).optional().describe("Number format for the cells"),
+      }).describe("Formatting options to apply"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, slideNumber, tableIndex, cellRange, format }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Keynote");
+      const doc = app.documents.byName(params.documentName);
+      const slide = doc.slides[params.slideNumber - 1];
+      const tables = slide.tables();
+      const idx = params.tableIndex || 0;
+      if (idx >= tables.length) {
+        throw new Error("Table index " + idx + " out of range (slide has " + tables.length + " tables)");
+      }
+      const tbl = tables[idx];
+      const range = params.cellRange;
+      // Parse range into list of cell refs
+      var cells = [];
+      if (range.indexOf(":") >= 0) {
+        var parts = range.split(":");
+        var startCol = parts[0].replace(/[0-9]/g, "");
+        var startRow = parseInt(parts[0].replace(/[A-Z]/g, ""), 10);
+        var endCol = parts[1].replace(/[0-9]/g, "");
+        var endRow = parseInt(parts[1].replace(/[A-Z]/g, ""), 10);
+        for (var r = startRow; r <= endRow; r++) {
+          for (var c = startCol.charCodeAt(0); c <= endCol.charCodeAt(0); c++) {
+            cells.push(String.fromCharCode(c) + r);
+          }
+        }
+      } else {
+        cells.push(range);
+      }
+      var formatted = 0;
+      for (var i = 0; i < cells.length; i++) {
+        var cell = tbl.cells[cells[i]];
+        if (params.format.textColor) {
+          var hex = params.format.textColor;
+          var r = parseInt(hex.slice(1,3), 16) / 255;
+          var g = parseInt(hex.slice(3,5), 16) / 255;
+          var b = parseInt(hex.slice(5,7), 16) / 255;
+          cell.textColor = [r, g, b];
+        }
+        if (params.format.numberFormat) {
+          cell.format = params.format.numberFormat;
+        }
+        formatted++;
+      }
+      return JSON.stringify({ formatted: true, cellsFormatted: formatted });
+    `, { documentName, slideNumber, tableIndex: tableIndex ?? 0, cellRange, format })),
+  );
+
   // ── Compound Tool ──
 
   server.tool(

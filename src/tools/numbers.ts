@@ -468,7 +468,7 @@ export function registerNumbersTools(server: McpServer): void {
 
   server.tool(
     "numbers_get_table_info",
-    "Get table metadata: row/column counts, header info, table name",
+    "Get table metadata: row/column counts, header info, table name, and position",
     {
       documentName: z.string().describe("Name of the open document"),
       sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
@@ -480,15 +480,63 @@ export function registerNumbersTools(server: McpServer): void {
       const doc = app.documents.byName(params.documentName);
       const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
       const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
-      return JSON.stringify({
+      var result = {
         name: table.name(),
         rowCount: table.rowCount(),
         columnCount: table.columnCount(),
         headerRowCount: table.headerRowCount(),
         headerColumnCount: table.headerColumnCount(),
         footerRowCount: table.footerRowCount(),
-      });
+      };
+      try { result.position = table.position(); } catch(e) {}
+      return JSON.stringify(result);
     `, { documentName, sheetName: sheetName ?? null, tableName: tableName ?? null })),
+  );
+
+  server.tool(
+    "numbers_get_cell_format",
+    "Read the number format and alignment of a cell (e.g. percent, currency, number, automatic)",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      cellRef: z.string().regex(/^[A-Z]{1,3}\d+$/).describe("Cell reference, e.g. 'A1', 'B3'"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+      tableName: z.string().optional().describe("Table name (defaults to first table)"),
+    },
+    ANNOTATIONS.readOnly,
+    async ({ documentName, cellRef, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+      const cell = table.cells[params.cellRef];
+      var result = { cellRef: params.cellRef };
+      try { result.format = cell.format() || "automatic"; } catch(e) { result.format = "automatic"; }
+      try { result.alignment = cell.alignment(); } catch(e) {}
+      try { result.verticalAlignment = cell.verticalAlignment(); } catch(e) {}
+      return JSON.stringify(result);
+    `, { documentName, cellRef, sheetName: sheetName ?? null, tableName: tableName ?? null })),
+  );
+
+  server.tool(
+    "numbers_move_table",
+    "Move a table to a new position on the sheet",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      x: z.number().describe("X position in points"),
+      y: z.number().describe("Y position in points"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+      tableName: z.string().optional().describe("Table name (defaults to first table)"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, x, y, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+      table.position = { x: params.x, y: params.y };
+      const pos = table.position();
+      return JSON.stringify({ moved: true, name: table.name(), position: pos });
+    `, { documentName, x, y, sheetName: sheetName ?? null, tableName: tableName ?? null })),
   );
 
   // ── Data Writing Tools ──
