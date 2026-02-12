@@ -250,7 +250,7 @@ iWork's scripting dictionary defines what's automatable — some features (chart
 - **macOS only** — requires Numbers, Pages, and Keynote 14.0+ (free from the App Store)
 - **Apps are visible** — iWork apps launch and show windows; there's no headless mode
 - **~430ms per call** — osascript startup overhead per tool invocation (use compound tools like `create_sheet_with_table`, `create_document_with_content`, and `create_presentation_with_slides` for speed)
-- **No charts** — Apple's scripting dictionary can create empty chart objects but has no API to bind data to them; add charts manually in Numbers (select data → Insert → Chart)
+- **Charts are basic** — `numbers_add_chart` creates data-bound charts (bar, line, pie, area, scatter) via an AppleScript bridge workaround, but chart customization (titles, labels, colors) is not exposed by Apple's scripting dictionary
 - **Formulas are write-only** — Apple's scripting dictionary returns computed values, not formula text
 - **No comments or track changes** — not exposed in the scripting dictionary
 - **Pages formatting** — paragraph formatting uses `bodyText.paragraphs` which supports font, size, and color; bold/italic require PostScript font names (e.g. `HelveticaNeue-Bold`); there is no direct bold/italic toggle
