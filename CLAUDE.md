@@ -3,7 +3,7 @@
 ## Project Overview
 - MCP server for Apple iWork (Numbers, Pages, Keynote) automation via JXA/osascript
 - TypeScript, ESM, uses `@modelcontextprotocol/sdk` v1.26.0
-- 89 tools total: 43 Numbers, 19 Pages, 27 Keynote (includes 8 Creator Studio AI tools)
+- 98 tools total: 46 Numbers, 20 Pages, 32 Keynote (includes 8 Creator Studio AI tools)
 - npm: `iwork-mcp` | GitHub: `reichenbach/iwork_mcp` (PRIVATE)
 - Requirements: macOS 13+, iWork 14.0+, Node.js 18+
 - Supports both standard iWork and iWork 15.1 "Creator Studio" app bundles
@@ -21,7 +21,7 @@
 - **Colors**: Numbers uses 0-65535 int range, NOT 0-1 floats. Multiply hex by 257.
 - **Font names**: Use PostScript names (`HelveticaNeue-Bold`) not display (`Helvetica Neue Bold`). Display names cause -10000 error.
 - **Merging**: Can't merge across header/non-header boundaries. Set headerRowCount/headerColumnCount to 0 first.
-- **Charts**: No API to bind data to charts. Documented limitation.
+- **Charts**: JXA can't bind data to charts. `numbers_add_chart` uses AppleScript bridge via `$.NSAppleScript` to create data-bound charts from selection.
 - **Pages 14.5 paragraphs**: `doc.paragraphs` completely broken — no push/read/format/index. Only `doc.bodyText` (plain string) works.
 - **Pages JXA paragraph access**: Use `doc.bodyText.paragraphs[i]`, NOT `doc.paragraphs[i]`. Properties are `font`/`size`/`color` (not `fontName`/`fontSize`/`bold`/`italic`). Color writes use 0-65535 ints, reads return 0-1 floats. No `bold`/`italic` properties — use PostScript font names instead.
 - **Pages bodyText formatting**: Setting `doc.bodyText = "..."` destroys ALL formatting. For structural changes (add/insert/delete), save formats first, set bodyText, then restore. For replace, use per-paragraph `doc.bodyText.paragraphs[i] = "new text"` which preserves other paragraphs' formatting.
@@ -32,12 +32,17 @@
 - **Numbers add_row at beginning**: JXA `table.rows.push()` always appends. To insert at beginning, must shift existing cell data down first, then write new data at row 0.
 - **JXA export format strings**: Use `"PDF"` not `"Numbers PDF"`/`"Pages PDF"`/`"Keynote PDF"`. The app-prefixed strings cause -1700 "Can't convert types".
 - **JXA `table.ranges["B2:C3"]`**: Completely broken — always throws "Invalid index" or "Can't get object". `read_range` manually parses cell refs and iterates cells.
-- **Numbers minimum table size**: `app.Table({columnCount: 1})` throws "Invalid column count (-10000)". Minimum is 2 columns.
+- **Numbers minimum table size**: `app.Table({columnCount: 1})` throws "Invalid column count (-10000)". Minimum is 2 columns AND 2 rows.
 - **Keynote can't delete all slides**: Can't `app.delete` the only slide — Keynote requires at least 1. Compound tool reuses the auto-generated first slide.
 - **Keynote `doc.save({ in: })` unreliable across processes**: `byName` + `save({ in: Path(...) })` fails with -1728 from a different osascript subprocess. Workaround: use `app.documents[0]` or combine create+save in one JXA call.
 - **Creator Studio `doc.save({ in: })` hangs**: Use `creatorStudioSaveAs()` in `src/jxa.ts` — closes with auto-save, copies file, reopens from new path.
 - **Creator Studio `app.export()` fails with error 6**: Use `creatorStudioExportPDF()` in `src/jxa.ts` — uses `qlmanage` Quick Look to generate PDF.
 - **Creator Studio document name resolution**: Auto-save renames documents by appending file extensions (e.g. "Untitled 1" -> "Untitled 1.numbers"). `injectDocumentNameResolution()` in `src/jxa.ts` handles this transparently by trying the extended name on lookup failure.
+- **Keynote shape position**: Setting `shape.position = [x, y]` (array format) silently fails — reads back as (0,0). Must use object format: `shape.position = {x: x, y: y}`. Width/height setting works fine with direct assignment.
+- **JXA `indexOf()` on scriptable objects**: `doc.sheets().indexOf(sheet)` returns -1 because JXA object references can't be compared with `===`. Iterate by name instead.
+- **Pages tables inaccessible via JXA**: `doc.tables()` throws -2763 "Don't know how to create TMAScriptTableInfoProxy". Pages tables can't be read/written programmatically.
+- **Keynote text colors**: Use 0-1 float range (like Pages), NOT 0-65535 int range (like Numbers). `paragraph.color = [r/255, g/255, b/255]`.
+- **Numbers auto-parses formatted strings**: Writing `"$1,234.56"` to a cell auto-converts to numeric 1234.56. To preserve strings, set `cell.format = "text"` before writing.
 
 ## File Structure
 - `src/index.ts` — entry point + install routing
@@ -57,7 +62,7 @@
 - `npm run test:integration` — CRUD tests for Numbers/Pages/Keynote, ~8s, needs apps
 - `npm run test:all` — both tiers combined
 - Uses `node:test` + `tsx`, in-memory MCP transport (no subprocess)
-- 77 tests total: 34 unit + 43 integration
+- 83 tests total: 34 unit + 49 integration
 
 ## Build & Publish
 - `npm run build` -> `tsc && chmod +x dist/index.js`
@@ -68,3 +73,5 @@
 
 ## Known Issues
 - All 6 Pages text tools (pages_add_text, pages_get_paragraphs, pages_format_text, pages_insert_text_at, pages_delete_text, pages_replace_text) work via `doc.bodyText.paragraphs` workarounds. The original `doc.paragraphs` API remains broken on Pages 14.5.
+- Pages tables are NOT accessible via JXA — `doc.tables()` throws -2763. Cannot implement pages_read_table or pages_write_table_cell.
+- Keynote shape fill/border colors are not exposed by JXA. Only opacity, rotation, and text formatting are settable via `keynote_format_shape`.

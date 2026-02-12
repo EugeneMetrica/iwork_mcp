@@ -172,6 +172,114 @@ describe("Keynote Integration", async () => {
     assert.equal(content.title, "Slide B");
   });
 
+  // ── Layout tools ──
+
+  it("positions a shape on a slide", async () => {
+    // Add a fresh slide with shapes for layout tests
+    await call(ctx, "keynote_add_slide", { documentName: docName });
+    const { json: slides } = await call(ctx, "keynote_list_slides", { documentName: docName });
+    const layoutSlide = slides.length;
+
+    // Add 3 shapes with known positions
+    await call(ctx, "keynote_add_shape", {
+      documentName: docName, slideNumber: layoutSlide, text: "Shape A",
+      x: 50, y: 50, width: 100, height: 80,
+    });
+
+    // Position the shape we just added (index 0 on this fresh slide)
+    const { json } = await call(ctx, "keynote_position_item", {
+      documentName: docName,
+      slideNumber: layoutSlide,
+      itemType: "shape",
+      itemIndex: 0,
+      x: 200,
+      y: 300,
+      width: 150,
+    });
+    assert.ok(json.positioned);
+    assert.ok(Math.abs(json.x - 200) < 2, `Expected x~200, got ${json.x}`);
+    assert.ok(Math.abs(json.y - 300) < 2, `Expected y~300, got ${json.y}`);
+    assert.equal(json.width, 150);
+
+    // Add two more shapes for align/distribute tests
+    await call(ctx, "keynote_add_shape", {
+      documentName: docName, slideNumber: layoutSlide, text: "Shape B",
+      x: 100, y: 100, width: 80, height: 60,
+    });
+    await call(ctx, "keynote_add_shape", {
+      documentName: docName, slideNumber: layoutSlide, text: "Shape C",
+      x: 300, y: 200, width: 80, height: 60,
+    });
+
+    // Test align
+    const { json: alignResult } = await call(ctx, "keynote_align_items", {
+      documentName: docName,
+      slideNumber: layoutSlide,
+      items: [
+        { itemType: "shape", itemIndex: 0 },
+        { itemType: "shape", itemIndex: 1 },
+        { itemType: "shape", itemIndex: 2 },
+      ],
+      alignment: "left",
+    });
+    assert.ok(alignResult.aligned);
+    assert.equal(alignResult.itemCount, 3);
+
+    // Test distribute
+    const { json: distResult } = await call(ctx, "keynote_distribute_items", {
+      documentName: docName,
+      slideNumber: layoutSlide,
+      items: [
+        { itemType: "shape", itemIndex: 0 },
+        { itemType: "shape", itemIndex: 1 },
+        { itemType: "shape", itemIndex: 2 },
+      ],
+      direction: "vertical",
+    });
+    assert.ok(distResult.distributed);
+    assert.equal(distResult.itemCount, 3);
+  });
+
+  // ── Shape formatting tools ──
+
+  it("reads and formats a shape", async () => {
+    // Add a slide with a shape for formatting tests
+    await call(ctx, "keynote_add_slide", { documentName: docName });
+    const { json: slides } = await call(ctx, "keynote_list_slides", { documentName: docName });
+    const fmtSlide = slides.length;
+
+    await call(ctx, "keynote_add_shape", {
+      documentName: docName, slideNumber: fmtSlide, text: "Format me",
+      x: 100, y: 100, width: 200, height: 100,
+    });
+
+    const { json: info } = await call(ctx, "keynote_get_shape_info", {
+      documentName: docName,
+      slideNumber: fmtSlide,
+      shapeIndex: 0,
+    });
+    assert.ok(info.width > 0);
+    assert.ok(info.opacity !== undefined);
+    assert.ok(info.text !== undefined);
+
+    const { json: fmtResult } = await call(ctx, "keynote_format_shape", {
+      documentName: docName,
+      slideNumber: fmtSlide,
+      shapeIndex: 0,
+      format: { opacity: 75, rotation: 15, fontName: "HelveticaNeue-Bold", fontSize: 18 },
+    });
+    assert.ok(fmtResult.formatted);
+
+    // Verify
+    const { json: after } = await call(ctx, "keynote_get_shape_info", {
+      documentName: docName,
+      slideNumber: fmtSlide,
+      shapeIndex: 0,
+    });
+    assert.equal(after.opacity, 75);
+    assert.equal(after.rotation, 15);
+  });
+
   // ── Export to PDF ──
 
   it("exports to PDF", async () => {

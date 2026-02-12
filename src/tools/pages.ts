@@ -453,6 +453,54 @@ export function registerPagesTools(server: McpServer): void {
     `, { documentName, rows: rows ?? null, columns: columns ?? null })),
   );
 
+  // ── Page Break Tool ──
+
+  server.tool(
+    "pages_insert_page_break",
+    "Insert a page break after a specific paragraph. Creates a visual page break in the document.",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      afterParagraph: z.number().int().min(0).describe("Insert page break after this paragraph index (0-based)"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, afterParagraph }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Pages");
+      const doc = app.documents.byName(params.documentName);
+      const paras = doc.bodyText.paragraphs;
+      const count = paras.length;
+      if (params.afterParagraph >= count) {
+        throw new Error("Paragraph index " + params.afterParagraph + " out of range (0-" + (count - 1) + ")");
+      }
+
+      // Save formatting on all paragraphs
+      const formats = [];
+      for (let i = 0; i < count; i++) {
+        try { formats.push({ font: paras[i].font(), size: paras[i].size(), color: paras[i].color() }); }
+        catch(e) { formats.push(null); }
+      }
+
+      // Insert form feed character at the end of the target paragraph's text.
+      // \f creates a visual page break in Pages.
+      const lines = doc.bodyText().split("\\n");
+      lines[params.afterParagraph] = lines[params.afterParagraph] + "\\f";
+      doc.bodyText = lines.join("\\n");
+
+      // Restore formatting — the \f creates one extra paragraph, so shift indices after the break
+      for (let i = 0; i < formats.length; i++) {
+        if (!formats[i]) continue;
+        const newIdx = i <= params.afterParagraph ? i : i + 1;
+        try {
+          const p = doc.bodyText.paragraphs[newIdx];
+          p.font = formats[i].font;
+          p.size = formats[i].size;
+          p.color = formats[i].color;
+        } catch(e) {}
+      }
+
+      return JSON.stringify({ pageBreakInserted: true, afterParagraph: params.afterParagraph });
+    `, { documentName, afterParagraph })),
+  );
+
   // ── Compound Tools ──
 
   server.tool(

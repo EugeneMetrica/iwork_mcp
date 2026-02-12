@@ -20,27 +20,27 @@ describe("Tool Registration", () => {
     assert.ok(instructions.includes("iWork"), "Instructions should mention iWork");
   });
 
-  it("registers all 89 tools", async () => {
+  it("registers all 98 tools", async () => {
     const { tools } = await ctx.client.listTools();
-    assert.equal(tools.length, 89);
+    assert.equal(tools.length, 98);
   });
 
-  it("registers 43 Numbers tools", async () => {
+  it("registers 46 Numbers tools", async () => {
     const { tools } = await ctx.client.listTools();
     const numbers = tools.filter((t) => t.name.startsWith("numbers_"));
-    assert.equal(numbers.length, 43);
+    assert.equal(numbers.length, 46);
   });
 
-  it("registers 19 Pages tools", async () => {
+  it("registers 20 Pages tools", async () => {
     const { tools } = await ctx.client.listTools();
     const pages = tools.filter((t) => t.name.startsWith("pages_"));
-    assert.equal(pages.length, 19);
+    assert.equal(pages.length, 20);
   });
 
-  it("registers 27 Keynote tools", async () => {
+  it("registers 32 Keynote tools", async () => {
     const { tools } = await ctx.client.listTools();
     const keynote = tools.filter((t) => t.name.startsWith("keynote_"));
-    assert.equal(keynote.length, 27);
+    assert.equal(keynote.length, 32);
   });
 
   it("every tool has a description", async () => {
@@ -82,6 +82,9 @@ describe("Tool Registration", () => {
       "numbers_insert_row_at",
       "numbers_insert_column_at",
       "numbers_format_range",
+      "numbers_auto_format",
+      "numbers_copy_range",
+      "numbers_add_chart",
       "numbers_magic_fill",
       "numbers_super_resolution",
       "numbers_remove_background",
@@ -103,6 +106,7 @@ describe("Tool Registration", () => {
       "pages_replace_text",
       "pages_close_document",
       "pages_create_document_with_content",
+      "pages_insert_page_break",
       "pages_super_resolution",
       "pages_remove_background",
     ];
@@ -123,6 +127,11 @@ describe("Tool Registration", () => {
       "keynote_set_slide_body",
       "keynote_set_presenter_notes",
       "keynote_close_presentation",
+      "keynote_position_item",
+      "keynote_align_items",
+      "keynote_distribute_items",
+      "keynote_get_shape_info",
+      "keynote_format_shape",
       "keynote_create_presentation_with_slides",
       "keynote_clean_up_slide",
       "keynote_super_resolution",
@@ -155,7 +164,7 @@ describe("Tool Registration", () => {
       "numbers_list_documents", "numbers_list_templates", "numbers_list_sheets", "numbers_list_tables",
       "numbers_read_table", "numbers_read_cell", "numbers_read_range", "numbers_get_table_info",
       "pages_list_documents", "pages_list_templates", "pages_get_body_text", "pages_get_paragraphs",
-      "keynote_list_presentations", "keynote_list_themes", "keynote_list_slides", "keynote_get_slide_content", "keynote_list_master_slides",
+      "keynote_list_presentations", "keynote_list_themes", "keynote_list_slides", "keynote_get_slide_content", "keynote_list_master_slides", "keynote_get_shape_info",
     ];
     const { tools } = await ctx.client.listTools();
     const byName = new Map(tools.map((t) => [t.name, t]));

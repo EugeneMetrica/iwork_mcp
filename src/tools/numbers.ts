@@ -1350,6 +1350,232 @@ export function registerNumbersTools(server: McpServer): void {
     })),
   );
 
+  // ── Auto-Format Tool ──
+
+  server.tool(
+    "numbers_auto_format",
+    "Scan a cell range, detect formats from string values (currency, percent, numbers with commas), convert to numeric values and apply native formatting. For example: '$1,234.56' becomes 1234.56 with currency format, '45%' becomes 0.45 with percent format.",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      cellRange: z.string().regex(/^[A-Z]{1,3}\d+:[A-Z]{1,3}\d+$/).describe("Cell range to auto-format, e.g. 'A1:C10'"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+      tableName: z.string().optional().describe("Table name (defaults to first table)"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, cellRange, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+
+      function parseRef(ref) {
+        const m = ref.match(/^([A-Z]+)(\\d+)$/);
+        let col = 0;
+        for (let i = 0; i < m[1].length; i++) col = col * 26 + m[1].charCodeAt(i) - 64;
+        return { row: parseInt(m[2], 10) - 1, col: col - 1 };
+      }
+      const parts = params.cellRange.split(":");
+      const start = parseRef(parts[0]);
+      const end = parseRef(parts[1]);
+      const totalCols = table.columnCount();
+
+      const stats = { currency: 0, percent: 0, number: 0, text: 0, empty: 0 };
+
+      for (let r = start.row; r <= end.row; r++) {
+        for (let c = start.col; c <= end.col; c++) {
+          const cell = table.cells[r * totalCols + c];
+          const val = cell.value();
+          if (val === null || val === undefined || val === "") {
+            stats.empty++;
+            continue;
+          }
+          if (typeof val !== "string") {
+            stats.text++;
+            continue;
+          }
+          const s = val.trim();
+          // Currency: $1,234.56 or ($1,234.56) for negative
+          const currMatch = s.match(/^\\(?\\$([\\d,]+\\.?\\d*)\\)?$/);
+          if (currMatch) {
+            let num = parseFloat(currMatch[1].replace(/,/g, ""));
+            if (s.startsWith("(")) num = -num;
+            cell.value = num;
+            cell.format = "currency";
+            stats.currency++;
+            continue;
+          }
+          // Percent: 45% or 45.5%
+          const pctMatch = s.match(/^(-?[\\d.]+)%$/);
+          if (pctMatch) {
+            cell.value = parseFloat(pctMatch[1]) / 100;
+            cell.format = "percent";
+            stats.percent++;
+            continue;
+          }
+          // Number with commas: 1,234 or 1,234.56
+          const numMatch = s.match(/^-?[\\d,]+\\.?\\d*$/);
+          if (numMatch && s.includes(",")) {
+            cell.value = parseFloat(s.replace(/,/g, ""));
+            cell.format = "number";
+            stats.number++;
+            continue;
+          }
+          stats.text++;
+        }
+      }
+
+      return JSON.stringify({ autoFormatted: true, stats });
+    `, { documentName, cellRange, sheetName: sheetName ?? null, tableName: tableName ?? null })),
+  );
+
+  // ── Cross-Document Copy Tool ──
+
+  server.tool(
+    "numbers_copy_range",
+    "Copy values from one document/sheet/table range to another. Both documents must be open. Copies values only (not formulas or formatting).",
+    {
+      sourceDoc: z.string().describe("Name of the source document"),
+      sourceRange: z.string().regex(/^[A-Z]{1,3}\d+:[A-Z]{1,3}\d+$/).describe("Source cell range, e.g. 'A1:C10'"),
+      destDoc: z.string().describe("Name of the destination document"),
+      destCell: z.string().regex(/^[A-Z]{1,3}\d+$/).describe("Top-left cell in the destination, e.g. 'A1'"),
+      sourceSheet: z.string().optional().describe("Source sheet name (defaults to first sheet)"),
+      sourceTable: z.string().optional().describe("Source table name (defaults to first table)"),
+      destSheet: z.string().optional().describe("Destination sheet name (defaults to first sheet)"),
+      destTable: z.string().optional().describe("Destination table name (defaults to first table)"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ sourceDoc, sourceRange, destDoc, destCell, sourceSheet, sourceTable, destSheet, destTable }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+
+      function parseRef(ref) {
+        const m = ref.match(/^([A-Z]+)(\\d+)$/);
+        let col = 0;
+        for (let i = 0; i < m[1].length; i++) col = col * 26 + m[1].charCodeAt(i) - 64;
+        return { row: parseInt(m[2], 10) - 1, col: col - 1 };
+      }
+
+      // Source
+      const srcDoc = app.documents.byName(params.sourceDoc);
+      const srcSheet = params.sourceSheet ? srcDoc.sheets.byName(params.sourceSheet) : srcDoc.sheets[0];
+      const srcTable = params.sourceTable ? srcSheet.tables.byName(params.sourceTable) : srcSheet.tables[0];
+      const rangeParts = params.sourceRange.split(":");
+      const srcStart = parseRef(rangeParts[0]);
+      const srcEnd = parseRef(rangeParts[1]);
+      const srcCols = srcTable.columnCount();
+      const copyRows = srcEnd.row - srcStart.row + 1;
+      const copyCols = srcEnd.col - srcStart.col + 1;
+
+      // Read source values
+      const values = [];
+      for (let r = srcStart.row; r <= srcEnd.row; r++) {
+        const row = [];
+        for (let c = srcStart.col; c <= srcEnd.col; c++) {
+          row.push(srcTable.cells[r * srcCols + c].value());
+        }
+        values.push(row);
+      }
+
+      // Destination
+      const dstDoc = app.documents.byName(params.destDoc);
+      const dstSheet = params.destSheet ? dstDoc.sheets.byName(params.destSheet) : dstDoc.sheets[0];
+      const dstTable = params.destTable ? dstSheet.tables.byName(params.destTable) : dstSheet.tables[0];
+      const dstStart = parseRef(params.destCell);
+      const dstCols = dstTable.columnCount();
+
+      // Auto-resize destination if needed
+      const needRows = dstStart.row + copyRows;
+      const needCols = dstStart.col + copyCols;
+      while (dstTable.rowCount() < needRows) dstTable.rows.push(app.Row());
+      while (dstTable.columnCount() < needCols) dstTable.columns.push(app.Column());
+      const newDstCols = dstTable.columnCount();
+
+      // Write values
+      let cellsCopied = 0;
+      for (let r = 0; r < copyRows; r++) {
+        for (let c = 0; c < copyCols; c++) {
+          const val = values[r][c];
+          if (val !== null && val !== undefined) {
+            dstTable.cells[(dstStart.row + r) * newDstCols + (dstStart.col + c)].value = val;
+            cellsCopied++;
+          }
+        }
+      }
+
+      return JSON.stringify({ copied: true, cellsCopied, rows: copyRows, columns: copyCols });
+    `, {
+      sourceDoc, sourceRange, destDoc, destCell,
+      sourceSheet: sourceSheet ?? null, sourceTable: sourceTable ?? null,
+      destSheet: destSheet ?? null, destTable: destTable ?? null,
+    })),
+  );
+
+  // ── Chart Tool ──
+
+  server.tool(
+    "numbers_add_chart",
+    "Create a chart from table data. Selects the specified data range and creates a chart on the same sheet. Chart type can be set after creation.",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      dataRange: z.string().regex(/^[A-Z]{1,3}\d+:[A-Z]{1,3}\d+$/).describe("Data range to chart, e.g. 'A1:B10' (include headers)"),
+      chartType: z.enum(["bar_2d", "line_2d", "pie_2d", "area_2d", "column_2d", "stacked_bar_2d", "stacked_column_2d"]).optional()
+        .describe("Chart type (default: column_2d)"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+      tableName: z.string().optional().describe("Table name (defaults to first table)"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, dataRange, chartType, sheetName, tableName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const table = params.tableName ? sheet.tables.byName(params.tableName) : sheet.tables[0];
+
+      // Select the data range
+      table.selectionRange = table.ranges[params.dataRange];
+
+      // Find sheet index by name (JXA indexOf doesn't work on scriptable objects)
+      const sheets = doc.sheets();
+      const sheetName = sheet.name();
+      let sheetIdx = 1;
+      for (let si = 0; si < sheets.length; si++) {
+        if (sheets[si].name() === sheetName) { sheetIdx = si + 1; break; }
+      }
+
+      // Create chart via AppleScript bridge (JXA chart creation doesn't bind to selection)
+      ObjC.import("Foundation");
+      const docName = doc.name();
+      const makeChartAS = 'tell application "Numbers" to tell sheet ' + sheetIdx + ' of document "' + docName + '" to make new chart';
+      const makeScript = $.NSAppleScript.alloc.initWithSource(makeChartAS);
+      const errDict = Ref();
+      const makeResult = makeScript.executeAndReturnError(errDict);
+      if (!makeResult) {
+        const errInfo = ObjC.deepUnwrap(errDict[0]);
+        throw new Error("Failed to create chart: " + (errInfo.NSAppleScriptErrorBriefMessage || "unknown error"));
+      }
+
+      // Set chart type via AppleScript if requested
+      const chartType = params.chartType || "column_2d";
+      const setTypeAS = 'tell application "Numbers" to tell sheet ' + sheetIdx + ' of document "' + docName + '" to set chart type of chart 1 to ' + chartType;
+      const setScript = $.NSAppleScript.alloc.initWithSource(setTypeAS);
+      const errDict2 = Ref();
+      setScript.executeAndReturnError(errDict2);
+
+      // Read chart info via JXA
+      const chartCount = sheet.charts.length;
+      const chart = sheet.charts[chartCount - 1];
+      return JSON.stringify({
+        chartCreated: true,
+        chartCount: chartCount,
+        width: chart.width(),
+        height: chart.height(),
+      });
+    `, {
+      documentName, dataRange,
+      chartType: chartType ?? null,
+      sheetName: sheetName ?? null,
+      tableName: tableName ?? null,
+    })),
+  );
+
   // ── Creator Studio Features (require subscription) ──
 
   server.tool(

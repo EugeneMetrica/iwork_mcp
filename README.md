@@ -1,6 +1,6 @@
 # iwork-mcp
 
-MCP server for Apple iWork automation — 89 tools for Numbers, Pages, and Keynote.
+MCP server for Apple iWork automation — 98 tools for Numbers, Pages, and Keynote.
 
 One line to install. Works with Claude Desktop, Claude Code, Codex, and any MCP client.
 
@@ -82,7 +82,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 
 ## Tools
 
-### Numbers (43 tools)
+### Numbers (46 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -125,12 +125,15 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `numbers_set_column_width` | Set column width |
 | `numbers_set_row_height` | Set row height |
 | `numbers_format_range` | Apply multiple formatting rules to different cell ranges in one call |
+| `numbers_auto_format` | Auto-detect and apply formatting (currency, percent, number) from string values |
+| `numbers_copy_range` | Copy values between open documents |
+| `numbers_add_chart` | Create charts (bar, line, pie, area, scatter) from table data |
 | `numbers_create_sheet_with_table` | Create a full sheet with table, data, and formatting in one fast call |
 | `numbers_magic_fill` | AI pattern fill — provide examples, fill remaining cells automatically (Creator Studio) |
 | `numbers_super_resolution` | AI image upscaling — increase resolution while preserving quality (Creator Studio) |
 | `numbers_remove_background` | AI background removal from images (Creator Studio) |
 
-### Pages (19 tools)
+### Pages (20 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -150,11 +153,12 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `pages_format_text` | Set font, size, color, bold, italic on a paragraph |
 | `pages_add_image` | Insert an image |
 | `pages_add_table` | Insert a table |
+| `pages_insert_page_break` | Insert a page break between paragraphs |
 | `pages_create_document_with_content` | Create a document with multiple formatted paragraphs in one fast call |
 | `pages_super_resolution` | AI image upscaling — increase resolution while preserving quality (Creator Studio) |
 | `pages_remove_background` | AI background removal from images (Creator Studio) |
 
-### Keynote (27 tools)
+### Keynote (32 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -177,6 +181,11 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `keynote_set_slide_body` | Set slide body / bullet points |
 | `keynote_add_image_to_slide` | Add an image to a slide |
 | `keynote_add_shape` | Add a shape with text |
+| `keynote_position_item` | Move/resize a shape, image, or text item by type and index |
+| `keynote_align_items` | Align 2+ items along an edge or center (left, right, top, bottom, center, middle) |
+| `keynote_distribute_items` | Evenly space 3+ items horizontally or vertically |
+| `keynote_get_shape_info` | Read shape properties (position, size, opacity, rotation, text formatting) |
+| `keynote_format_shape` | Set opacity, rotation, and text font/size/color/alignment on a shape |
 | `keynote_set_presenter_notes` | Set presenter notes |
 | `keynote_set_transition` | Set slide transition effect |
 | `keynote_start_slideshow` | Start playing the presentation |

@@ -163,6 +163,20 @@ describe("Pages Integration", async () => {
     assert.ok(afterParas.length < countBefore);
   });
 
+  // ── Page break ──
+
+  it("inserts a page break between paragraphs", async () => {
+    const { json } = await call(ctx, "pages_insert_page_break", {
+      documentName: docName,
+      afterParagraph: 0,
+    });
+    assert.ok(json.pageBreakInserted);
+
+    // Verify form feed is present in body text
+    const { json: body } = await call(ctx, "pages_get_body_text", { documentName: docName });
+    assert.ok(body.text.includes("\f"), "Body text should contain form feed character");
+  });
+
   // ── Export to PDF ──
 
   it("exports to PDF", async () => {

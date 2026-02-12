@@ -390,6 +390,128 @@ describe("Numbers Integration", async () => {
     assert.ok(json.cellsFormatted >= 7, `Expected at least 7 cells formatted, got ${json.cellsFormatted}`);
   });
 
+  // ── Auto-format test ──
+
+  it("auto-formats currency, percent, and comma numbers", async () => {
+    const sheet = `AutoFmt_${suffix}`;
+    // Create table with placeholder data (Numbers requires min 2 rows)
+    await call(ctx, "numbers_create_sheet_with_table", {
+      documentName: docName,
+      sheetName: sheet,
+      tableName: sheet,
+      data: [["a", "b", "c", "d"], ["x", "x", "x", "x"]],
+    });
+
+    // Set cells to text format so string values are preserved, not auto-parsed
+    await call(ctx, "numbers_format_range", {
+      documentName: docName,
+      rules: [{ cellRange: "A1:D1", numberFormat: "text" }],
+      sheetName: sheet,
+      tableName: sheet,
+    });
+
+    // Write actual test data
+    await call(ctx, "numbers_write_cells", {
+      documentName: docName,
+      writes: [
+        { cellRef: "A1", value: "$1,234.56" },
+        { cellRef: "B1", value: "45%" },
+        { cellRef: "C1", value: "1,234" },
+        { cellRef: "D1", value: "hello" },
+      ],
+      sheetName: sheet,
+      tableName: sheet,
+    });
+
+    const { json } = await call(ctx, "numbers_auto_format", {
+      documentName: docName,
+      cellRange: "A1:D1",
+      sheetName: sheet,
+      tableName: sheet,
+    }) as { json: { autoFormatted: boolean; stats: Record<string, number> } };
+    assert.ok(json.autoFormatted);
+    assert.equal(json.stats.currency, 1);
+    assert.equal(json.stats.percent, 1);
+    assert.equal(json.stats.number, 1);
+    assert.equal(json.stats.text, 1);
+
+    // Verify numeric conversion
+    const { json: data } = await call(ctx, "numbers_read_range", {
+      documentName: docName,
+      cellRange: "A1:D1",
+      sheetName: sheet,
+      tableName: sheet,
+    }) as { json: (number | string | null)[][] };
+    assert.equal(data[0][0], 1234.56);
+    assert.ok(Math.abs((data[0][1] as number) - 0.45) < 0.001, `Expected ~0.45, got ${data[0][1]}`);
+    assert.equal(data[0][2], 1234);
+    assert.equal(data[0][3], "hello");
+  });
+
+  // ── Copy range test ──
+
+  it("copies a range between two documents", async () => {
+    const sheet = `CopySrc_${suffix}`;
+    await call(ctx, "numbers_create_sheet_with_table", {
+      documentName: docName,
+      sheetName: sheet,
+      tableName: sheet,
+      data: [["Name", "Score"], ["Alice", 95], ["Bob", 87]],
+    });
+
+    // Create a second document
+    const { json: doc2 } = await call(ctx, "numbers_create_document");
+    const doc2Name = doc2.name;
+
+    const { json: copyResult } = await call(ctx, "numbers_copy_range", {
+      sourceDoc: docName,
+      sourceRange: "A1:B3",
+      destDoc: doc2Name,
+      destCell: "A1",
+      sourceSheet: sheet,
+      sourceTable: sheet,
+    }) as { json: { copied: boolean; cellsCopied: number; rows: number; columns: number } };
+    assert.ok(copyResult.copied);
+    assert.equal(copyResult.rows, 3);
+    assert.equal(copyResult.columns, 2);
+
+    // Verify in destination
+    const { json: data } = await call(ctx, "numbers_read_table", {
+      documentName: doc2Name,
+    }) as { json: (string | number | null)[][] };
+    assert.equal(data[0][0], "Name");
+    assert.equal(data[1][0], "Alice");
+    assert.equal(data[1][1], 95);
+    assert.equal(data[2][0], "Bob");
+
+    await call(ctx, "numbers_close_document", { documentName: doc2Name, saving: "no" });
+  });
+
+  // ── Chart test ──
+
+  it("creates a chart from table data", async () => {
+    const sheet = `Chart_${suffix}`;
+    await call(ctx, "numbers_create_sheet_with_table", {
+      documentName: docName,
+      sheetName: sheet,
+      tableName: sheet,
+      data: [["Month", "Revenue"], ["Jan", 1000], ["Feb", 2000], ["Mar", 3000]],
+      headerRowCount: 1,
+    });
+
+    const { json } = await call(ctx, "numbers_add_chart", {
+      documentName: docName,
+      dataRange: "A1:B4",
+      chartType: "bar_2d",
+      sheetName: sheet,
+      tableName: sheet,
+    }) as { json: { chartCreated: boolean; chartCount: number; width: number; height: number } };
+    assert.ok(json.chartCreated);
+    assert.ok(json.chartCount >= 1);
+    assert.ok(json.width > 0);
+    assert.ok(json.height > 0);
+  });
+
   // ── Error on invalid document ──
 
   it("returns isError for a nonexistent document", async () => {

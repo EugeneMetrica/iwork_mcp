@@ -556,6 +556,264 @@ export function registerKeynoteTools(server: McpServer): void {
     `, { documentName, fromSlide: fromSlide ?? null })),
   );
 
+  // ── Layout Tools ──
+
+  server.tool(
+    "keynote_position_item",
+    "Move and/or resize an item (shape, image, or textItem) on a slide by type and index",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+      slideNumber: z.number().int().min(1).describe("Slide number (1-based)"),
+      itemType: z.enum(["shape", "image", "textItem"]).describe("Type of item"),
+      itemIndex: z.number().int().min(0).describe("Item index (0-based)"),
+      x: z.number().optional().describe("New X position in points"),
+      y: z.number().optional().describe("New Y position in points"),
+      width: z.number().positive().optional().describe("New width in points"),
+      height: z.number().positive().optional().describe("New height in points"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, slideNumber, itemType, itemIndex, x, y, width, height }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Keynote");
+      const doc = app.documents.byName(params.documentName);
+      const slide = doc.slides[params.slideNumber - 1];
+
+      const collections = { shape: slide.shapes, image: slide.images, textItem: slide.textItems };
+      const items = collections[params.itemType]();
+      if (params.itemIndex >= items.length) {
+        throw new Error(params.itemType + " index " + params.itemIndex + " out of range (slide has " + items.length + ")");
+      }
+      const item = items[params.itemIndex];
+
+      const pos = item.position();
+      const newX = params.x !== null ? params.x : pos.x;
+      const newY = params.y !== null ? params.y : pos.y;
+      item.position = {x: newX, y: newY};
+
+      if (params.width !== null) item.width = params.width;
+      if (params.height !== null) item.height = params.height;
+
+      return JSON.stringify({
+        positioned: true,
+        x: item.position().x,
+        y: item.position().y,
+        width: item.width(),
+        height: item.height(),
+      });
+    `, { documentName, slideNumber, itemType, itemIndex, x: x ?? null, y: y ?? null, width: width ?? null, height: height ?? null })),
+  );
+
+  server.tool(
+    "keynote_align_items",
+    "Align two or more items on a slide along an edge or center",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+      slideNumber: z.number().int().min(1).describe("Slide number (1-based)"),
+      items: z.array(z.object({
+        itemType: z.enum(["shape", "image", "textItem"]).describe("Type of item"),
+        itemIndex: z.number().int().min(0).describe("Item index (0-based)"),
+      })).min(2).describe("Items to align (at least 2)"),
+      alignment: z.enum(["left", "center", "right", "top", "middle", "bottom"]).describe("Alignment edge or center"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, slideNumber, items, alignment }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Keynote");
+      const doc = app.documents.byName(params.documentName);
+      const slide = doc.slides[params.slideNumber - 1];
+
+      const collections = { shape: slide.shapes, image: slide.images, textItem: slide.textItems };
+      const resolved = params.items.map(function(spec) {
+        var col = collections[spec.itemType]();
+        if (spec.itemIndex >= col.length) throw new Error(spec.itemType + " index " + spec.itemIndex + " out of range");
+        return col[spec.itemIndex];
+      });
+
+      // Compute target coordinate
+      var target;
+      var align = params.alignment;
+      if (align === "left") {
+        target = Math.min.apply(null, resolved.map(function(it) { return it.position().x; }));
+        resolved.forEach(function(it) { var p = it.position(); it.position = {x: target, y: p.y}; });
+      } else if (align === "right") {
+        target = Math.max.apply(null, resolved.map(function(it) { return it.position().x + it.width(); }));
+        resolved.forEach(function(it) { var p = it.position(); it.position = {x: target - it.width(), y: p.y}; });
+      } else if (align === "center") {
+        var centers = resolved.map(function(it) { return it.position().x + it.width() / 2; });
+        target = centers.reduce(function(a, b) { return a + b; }, 0) / centers.length;
+        resolved.forEach(function(it) { var p = it.position(); it.position = {x: target - it.width() / 2, y: p.y}; });
+      } else if (align === "top") {
+        target = Math.min.apply(null, resolved.map(function(it) { return it.position().y; }));
+        resolved.forEach(function(it) { var p = it.position(); it.position = {x: p.x, y: target}; });
+      } else if (align === "bottom") {
+        target = Math.max.apply(null, resolved.map(function(it) { return it.position().y + it.height(); }));
+        resolved.forEach(function(it) { var p = it.position(); it.position = {x: p.x, y: target - it.height()}; });
+      } else if (align === "middle") {
+        var middles = resolved.map(function(it) { return it.position().y + it.height() / 2; });
+        target = middles.reduce(function(a, b) { return a + b; }, 0) / middles.length;
+        resolved.forEach(function(it) { var p = it.position(); it.position = {x: p.x, y: target - it.height() / 2}; });
+      }
+
+      return JSON.stringify({ aligned: true, alignment: params.alignment, itemCount: resolved.length });
+    `, { documentName, slideNumber, items, alignment })),
+  );
+
+  server.tool(
+    "keynote_distribute_items",
+    "Evenly space three or more items on a slide horizontally or vertically",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+      slideNumber: z.number().int().min(1).describe("Slide number (1-based)"),
+      items: z.array(z.object({
+        itemType: z.enum(["shape", "image", "textItem"]).describe("Type of item"),
+        itemIndex: z.number().int().min(0).describe("Item index (0-based)"),
+      })).min(3).describe("Items to distribute (at least 3)"),
+      direction: z.enum(["horizontal", "vertical"]).describe("Distribution direction"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, slideNumber, items, direction }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Keynote");
+      const doc = app.documents.byName(params.documentName);
+      const slide = doc.slides[params.slideNumber - 1];
+
+      const collections = { shape: slide.shapes, image: slide.images, textItem: slide.textItems };
+      const resolved = params.items.map(function(spec) {
+        var col = collections[spec.itemType]();
+        if (spec.itemIndex >= col.length) throw new Error(spec.itemType + " index " + spec.itemIndex + " out of range");
+        return col[spec.itemIndex];
+      });
+
+      if (params.direction === "horizontal") {
+        // Sort by x position
+        resolved.sort(function(a, b) { return a.position().x - b.position().x; });
+        var firstX = resolved[0].position().x;
+        var lastX = resolved[resolved.length - 1].position().x;
+        var totalWidth = resolved.reduce(function(sum, it) { return sum + it.width(); }, 0);
+        var totalSpace = (lastX + resolved[resolved.length - 1].width()) - firstX;
+        var gap = (totalSpace - totalWidth) / (resolved.length - 1);
+        var currentX = firstX;
+        for (var i = 0; i < resolved.length; i++) {
+          var p = resolved[i].position();
+          resolved[i].position = {x: currentX, y: p.y};
+          currentX += resolved[i].width() + gap;
+        }
+      } else {
+        // Sort by y position
+        resolved.sort(function(a, b) { return a.position().y - b.position().y; });
+        var firstY = resolved[0].position().y;
+        var lastY = resolved[resolved.length - 1].position().y;
+        var totalHeight = resolved.reduce(function(sum, it) { return sum + it.height(); }, 0);
+        var totalSpaceV = (lastY + resolved[resolved.length - 1].height()) - firstY;
+        var gapV = (totalSpaceV - totalHeight) / (resolved.length - 1);
+        var currentY = firstY;
+        for (var j = 0; j < resolved.length; j++) {
+          var pv = resolved[j].position();
+          resolved[j].position = {x: pv.x, y: currentY};
+          currentY += resolved[j].height() + gapV;
+        }
+      }
+
+      return JSON.stringify({ distributed: true, direction: params.direction, itemCount: resolved.length });
+    `, { documentName, slideNumber, items, direction })),
+  );
+
+  // ── Shape Formatting Tools ──
+
+  server.tool(
+    "keynote_get_shape_info",
+    "Read shape properties: position, size, text, opacity, rotation, and text formatting",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+      slideNumber: z.number().int().min(1).describe("Slide number (1-based)"),
+      shapeIndex: z.number().int().min(0).describe("Shape index (0-based)"),
+    },
+    ANNOTATIONS.readOnly,
+    async ({ documentName, slideNumber, shapeIndex }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Keynote");
+      const doc = app.documents.byName(params.documentName);
+      const slide = doc.slides[params.slideNumber - 1];
+      const shapes = slide.shapes();
+      if (params.shapeIndex >= shapes.length) {
+        throw new Error("Shape index " + params.shapeIndex + " out of range (slide has " + shapes.length + " shapes)");
+      }
+      const shape = shapes[params.shapeIndex];
+
+      const info = {};
+      try { info.position = shape.position(); } catch(e) {}
+      try { info.width = shape.width(); } catch(e) {}
+      try { info.height = shape.height(); } catch(e) {}
+      try { info.opacity = shape.opacity(); } catch(e) {}
+      try { info.rotation = shape.rotation(); } catch(e) {}
+      try { info.text = shape.objectText(); } catch(e) {}
+      try {
+        const p = shape.objectText.paragraphs[0];
+        info.textFormat = {};
+        try { info.textFormat.font = p.font(); } catch(e) {}
+        try { info.textFormat.size = p.size(); } catch(e) {}
+        try {
+          const c = p.color();
+          if (Array.isArray(c) && c.length >= 3) {
+            const toHex = function(v) { return Math.round(v * 255).toString(16).padStart(2, "0"); };
+            info.textFormat.color = "#" + toHex(c[0]) + toHex(c[1]) + toHex(c[2]);
+          }
+        } catch(e) {}
+      } catch(e) {}
+
+      return JSON.stringify(info);
+    `, { documentName, slideNumber, shapeIndex })),
+  );
+
+  server.tool(
+    "keynote_format_shape",
+    "Set shape properties: opacity, rotation, and text formatting (font, size, color, alignment). Note: fill and border colors are not accessible via scripting.",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+      slideNumber: z.number().int().min(1).describe("Slide number (1-based)"),
+      shapeIndex: z.number().int().min(0).describe("Shape index (0-based)"),
+      format: z.object({
+        opacity: z.number().min(0).max(100).optional().describe("Opacity (0-100)"),
+        rotation: z.number().optional().describe("Rotation in degrees"),
+        fontName: z.string().optional().describe("PostScript font name for shape text"),
+        fontSize: z.number().positive().optional().describe("Font size in points"),
+        textColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().describe("Text color as hex, e.g. '#FF0000'"),
+        textAlignment: z.enum(["left", "center", "right", "justified"]).optional().describe("Text alignment"),
+      }).describe("Format options"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, slideNumber, shapeIndex, format }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Keynote");
+      const doc = app.documents.byName(params.documentName);
+      const slide = doc.slides[params.slideNumber - 1];
+      const shapes = slide.shapes();
+      if (params.shapeIndex >= shapes.length) {
+        throw new Error("Shape index " + params.shapeIndex + " out of range (slide has " + shapes.length + " shapes)");
+      }
+      const shape = shapes[params.shapeIndex];
+      const fmt = params.format;
+
+      if (fmt.opacity !== undefined) shape.opacity = fmt.opacity;
+      if (fmt.rotation !== undefined) shape.rotation = fmt.rotation;
+
+      // Text formatting applies to all paragraphs
+      const paras = shape.objectText.paragraphs;
+      const paraCount = paras.length;
+      for (let i = 0; i < paraCount; i++) {
+        if (fmt.fontName !== undefined) paras[i].font = fmt.fontName;
+        if (fmt.fontSize !== undefined) paras[i].size = fmt.fontSize;
+        if (fmt.textColor !== undefined) {
+          const hex = fmt.textColor;
+          const r = parseInt(hex.slice(1, 3), 16) / 255;
+          const g = parseInt(hex.slice(3, 5), 16) / 255;
+          const b = parseInt(hex.slice(5, 7), 16) / 255;
+          paras[i].color = [r, g, b];
+        }
+      }
+      if (fmt.textAlignment !== undefined) {
+        shape.objectText.alignment = fmt.textAlignment;
+      }
+
+      return JSON.stringify({ formatted: true, shapeIndex: params.shapeIndex });
+    `, { documentName, slideNumber, shapeIndex, format })),
+  );
+
   // ── Compound Tool ──
 
   server.tool(
