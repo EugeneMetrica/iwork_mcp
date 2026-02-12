@@ -309,6 +309,52 @@ describe("Keynote Integration", async () => {
     assert.equal(after.theme, targetTheme);
   });
 
+  // ── Slide layout ──
+
+  it("changes a slide layout", async () => {
+    const { json } = await call(ctx, "keynote_set_slide_layout", {
+      documentName: docName,
+      slideNumber: 1,
+      masterSlideName: "Blank",
+    });
+    assert.ok(json.layoutSet);
+    assert.equal(json.masterSlide, "Blank");
+  });
+
+  // ── Slide tables ──
+
+  it("adds a table to a slide and reads it back", async () => {
+    // Add a slide for table tests
+    await call(ctx, "keynote_add_slide", { documentName: docName });
+    const { json: slides } = await call(ctx, "keynote_list_slides", { documentName: docName });
+    const tblSlide = slides.length;
+
+    const { json: addResult } = await call(ctx, "keynote_add_table_to_slide", {
+      documentName: docName,
+      slideNumber: tblSlide,
+      data: [
+        ["Product", "Q1", "Q2"],
+        ["Widget", 100, 200],
+        ["Gadget", 300, 400],
+      ],
+    });
+    assert.ok(addResult.added);
+    assert.equal(addResult.rows, 3);
+    assert.equal(addResult.columns, 3);
+
+    // Read it back
+    const { json: readResult } = await call(ctx, "keynote_read_slide_table", {
+      documentName: docName,
+      slideNumber: tblSlide,
+      tableIndex: 0,
+    });
+    assert.equal(readResult.rows, 3);
+    assert.equal(readResult.columns, 3);
+    assert.equal(readResult.data[0][0], "Product");
+    assert.equal(readResult.data[1][1], 100);
+    assert.equal(readResult.data[2][2], 400);
+  });
+
   // ── Export to PDF ──
 
   it("exports to PDF", async () => {

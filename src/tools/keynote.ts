@@ -371,6 +371,31 @@ export function registerKeynoteTools(server: McpServer): void {
   );
 
   server.tool(
+    "keynote_set_slide_layout",
+    "Change the master slide layout of an existing slide (use keynote_list_master_slides to see available layouts)",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+      slideNumber: z.number().int().min(1).describe("Slide number (1-based)"),
+      masterSlideName: z.string().describe("Master slide layout name (e.g. 'Title & Subtitle', 'Bullets', 'Blank')"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, slideNumber, masterSlideName }) => handleJXA(() => runJXA<string>(`
+      ObjC.import("Foundation");
+      const docName = params.documentName.replace(/"/g, '\\\\"');
+      const masterName = params.masterSlideName.replace(/"/g, '\\\\"');
+      const asCode = 'tell application "Keynote" to tell document "' + docName + '" to set base slide of slide ' + params.slideNumber + ' to master slide "' + masterName + '"';
+      const script = $.NSAppleScript.alloc.initWithSource(asCode);
+      const err = $();
+      const result = script.executeAndReturnError(err);
+      if (!result || result.isNil ? result.isNil() : !result) {
+        const errInfo = ObjC.deepUnwrap(err);
+        throw new Error(errInfo.NSAppleScriptErrorBriefMessage || "Failed to set slide layout");
+      }
+      return JSON.stringify({ layoutSet: true, slideNumber: params.slideNumber, masterSlide: params.masterSlideName });
+    `, { documentName, slideNumber, masterSlideName })),
+  );
+
+  server.tool(
     "keynote_stop_slideshow",
     "Stop a running slideshow",
     {
@@ -842,6 +867,96 @@ export function registerKeynoteTools(server: McpServer): void {
 
       return JSON.stringify({ formatted: true, shapeIndex: params.shapeIndex });
     `, { documentName, slideNumber, shapeIndex, format })),
+  );
+
+  // ── Slide Table Tools ──
+
+  server.tool(
+    "keynote_add_table_to_slide",
+    "Add a table to a slide with optional data",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+      slideNumber: z.number().int().min(1).describe("Slide number (1-based)"),
+      rows: z.number().int().min(1).optional().describe("Number of rows (default: 3)"),
+      columns: z.number().int().min(1).optional().describe("Number of columns (default: 3)"),
+      data: z.array(z.array(z.union([z.string(), z.number(), z.boolean(), z.null()]))).optional().describe("2D array of data — first row can be headers"),
+      x: z.number().optional().describe("X position in points"),
+      y: z.number().optional().describe("Y position in points"),
+      width: z.number().positive().optional().describe("Width in points"),
+      height: z.number().positive().optional().describe("Height in points"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, slideNumber, rows, columns, data, x, y, width, height }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Keynote");
+      const doc = app.documents.byName(params.documentName);
+      const slide = doc.slides[params.slideNumber - 1];
+      const rowCount = params.data ? params.data.length : (params.rows || 3);
+      const colCount = params.data && params.data[0] ? params.data[0].length : (params.columns || 3);
+      const tbl = app.Table({ rowCount: Math.max(rowCount, 1), columnCount: Math.max(colCount, 1) });
+      slide.tables.push(tbl);
+      const addedTable = slide.tables[slide.tables.length - 1];
+      if (params.x != null || params.y != null) {
+        const pos = addedTable.position();
+        addedTable.position = { x: params.x != null ? params.x : pos.x, y: params.y != null ? params.y : pos.y };
+      }
+      if (params.width != null) addedTable.width = params.width;
+      if (params.height != null) addedTable.height = params.height;
+      if (params.data) {
+        for (var r = 0; r < params.data.length; r++) {
+          for (var c = 0; c < params.data[r].length; c++) {
+            if (params.data[r][c] !== null && params.data[r][c] !== undefined) {
+              var colLetter = String.fromCharCode(65 + c);
+              addedTable.cells[colLetter + (r + 1)].value = params.data[r][c];
+            }
+          }
+        }
+      }
+      return JSON.stringify({
+        added: true,
+        tableName: addedTable.name(),
+        rows: addedTable.rowCount(),
+        columns: addedTable.columnCount(),
+      });
+    `, { documentName, slideNumber, rows: rows ?? null, columns: columns ?? null, data: data ?? null, x: x ?? null, y: y ?? null, width: width ?? null, height: height ?? null })),
+  );
+
+  server.tool(
+    "keynote_read_slide_table",
+    "Read all data from a table on a slide as a 2D array",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+      slideNumber: z.number().int().min(1).describe("Slide number (1-based)"),
+      tableIndex: z.number().int().min(0).optional().describe("Table index on the slide (0-based, default: 0)"),
+    },
+    ANNOTATIONS.readOnly,
+    async ({ documentName, slideNumber, tableIndex }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Keynote");
+      const doc = app.documents.byName(params.documentName);
+      const slide = doc.slides[params.slideNumber - 1];
+      const tables = slide.tables();
+      const idx = params.tableIndex || 0;
+      if (idx >= tables.length) {
+        throw new Error("Table index " + idx + " out of range (slide has " + tables.length + " tables)");
+      }
+      const tbl = tables[idx];
+      const rows = tbl.rowCount();
+      const cols = tbl.columnCount();
+      const data = [];
+      for (var r = 0; r < rows; r++) {
+        var row = [];
+        for (var c = 0; c < cols; c++) {
+          var colLetter = String.fromCharCode(65 + c);
+          try { row.push(tbl.cells[colLetter + (r + 1)].value()); } catch(e) { row.push(null); }
+        }
+        data.push(row);
+      }
+      return JSON.stringify({
+        tableName: tbl.name(),
+        rows: rows,
+        columns: cols,
+        data: data,
+      });
+    `, { documentName, slideNumber, tableIndex: tableIndex ?? 0 })),
   );
 
   // ── Compound Tool ──

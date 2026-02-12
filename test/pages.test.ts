@@ -74,6 +74,16 @@ describe("Pages Integration", async () => {
     assert.ok(paragraphs[0].text.includes("Test Title"));
   });
 
+  it("gets document info", async () => {
+    const { json } = await call(ctx, "pages_get_document_info", { documentName: docName });
+    assert.ok(json.name);
+    assert.ok(json.wordCount > 0, "Should have words");
+    assert.ok(json.characterCount > 0, "Should have characters");
+    assert.ok(json.pageCount >= 1, "Should have at least one page");
+    assert.ok(json.paragraphCount >= 3, "Should have at least 3 paragraphs");
+    assert.equal(typeof json.modified, "boolean");
+  });
+
   it("appends text", async () => {
     const { json } = await call(ctx, "pages_add_text", {
       documentName: docName,

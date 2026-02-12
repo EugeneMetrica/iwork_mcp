@@ -1,6 +1,6 @@
 # iwork-mcp
 
-MCP server for Apple iWork automation — 100 tools for Numbers, Pages, and Keynote.
+MCP server for Apple iWork automation — 104 tools for Numbers, Pages, and Keynote.
 
 One line to install. Works with Claude Desktop, Claude Code, Codex, and any MCP client.
 
@@ -133,7 +133,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `numbers_super_resolution` | AI image upscaling — increase resolution while preserving quality (Creator Studio) |
 | `numbers_remove_background` | AI background removal from images (Creator Studio) |
 
-### Pages (20 tools)
+### Pages (21 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -146,6 +146,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `pages_close_document` | Close a document |
 | `pages_get_body_text` | Read all body text |
 | `pages_get_paragraphs` | Get paragraphs as indexed array |
+| `pages_get_document_info` | Get word count, character count, page count, modified status |
 | `pages_add_text` | Append text (preserves formatting) |
 | `pages_insert_text_at` | Insert text at a paragraph index |
 | `pages_delete_text` | Delete a paragraph |
@@ -158,7 +159,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `pages_super_resolution` | AI image upscaling — increase resolution while preserving quality (Creator Studio) |
 | `pages_remove_background` | AI background removal from images (Creator Studio) |
 
-### Keynote (34 tools)
+### Keynote (37 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -179,6 +180,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `keynote_duplicate_slide` | Duplicate a slide |
 | `keynote_reorder_slide` | Move a slide to a new position |
 | `keynote_skip_slide` | Hide/unhide a slide |
+| `keynote_set_slide_layout` | Change the master slide layout of an existing slide |
 | `keynote_set_slide_title` | Set slide title text |
 | `keynote_set_slide_body` | Set slide body / bullet points |
 | `keynote_add_image_to_slide` | Add an image to a slide |
@@ -188,6 +190,8 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `keynote_distribute_items` | Evenly space 3+ items horizontally or vertically |
 | `keynote_get_shape_info` | Read shape properties (position, size, opacity, rotation, text formatting) |
 | `keynote_format_shape` | Set opacity, rotation, and text font/size/color/alignment on a shape |
+| `keynote_add_table_to_slide` | Add a table to a slide with optional data |
+| `keynote_read_slide_table` | Read all data from a table on a slide |
 | `keynote_set_presenter_notes` | Set presenter notes |
 | `keynote_set_transition` | Set slide transition effect |
 | `keynote_start_slideshow` | Start playing the presentation |

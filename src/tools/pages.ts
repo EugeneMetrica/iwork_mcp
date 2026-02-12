@@ -227,6 +227,30 @@ export function registerPagesTools(server: McpServer): void {
     `, { documentName })),
   );
 
+  server.tool(
+    "pages_get_document_info",
+    "Get document metadata: word count, character count, page count, modified status",
+    {
+      documentName: z.string().describe("Name of the open document"),
+    },
+    ANNOTATIONS.readOnly,
+    async ({ documentName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Pages");
+      const doc = app.documents.byName(params.documentName);
+      const result = {
+        name: doc.name(),
+        modified: doc.modified(),
+        passwordProtected: doc.passwordProtected(),
+      };
+      try { result.wordCount = doc.bodyText.words().length; } catch(e) { result.wordCount = null; }
+      try { result.characterCount = doc.bodyText.characters().length; } catch(e) { result.characterCount = null; }
+      try { result.pageCount = doc.pages.length; } catch(e) { result.pageCount = null; }
+      try { result.paragraphCount = doc.bodyText.paragraphs.length; } catch(e) { result.paragraphCount = null; }
+      try { result.filePath = doc.file() ? doc.file().toString() : null; } catch(e) { result.filePath = null; }
+      return JSON.stringify(result);
+    `, { documentName })),
+  );
+
   // ── Text Writing Tools ──
 
   server.tool(
