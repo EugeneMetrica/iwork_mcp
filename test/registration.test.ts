@@ -20,9 +20,9 @@ describe("Tool Registration", () => {
     assert.ok(instructions.includes("iWork"), "Instructions should mention iWork");
   });
 
-  it("registers all 98 tools", async () => {
+  it("registers all 100 tools", async () => {
     const { tools } = await ctx.client.listTools();
-    assert.equal(tools.length, 98);
+    assert.equal(tools.length, 100);
   });
 
   it("registers 46 Numbers tools", async () => {
@@ -37,10 +37,10 @@ describe("Tool Registration", () => {
     assert.equal(pages.length, 20);
   });
 
-  it("registers 32 Keynote tools", async () => {
+  it("registers 34 Keynote tools", async () => {
     const { tools } = await ctx.client.listTools();
     const keynote = tools.filter((t) => t.name.startsWith("keynote_"));
-    assert.equal(keynote.length, 32);
+    assert.equal(keynote.length, 34);
   });
 
   it("every tool has a description", async () => {
@@ -120,6 +120,8 @@ describe("Tool Registration", () => {
     const names = new Set(tools.map((t) => t.name));
     const expected = [
       "keynote_list_themes",
+      "keynote_get_theme",
+      "keynote_set_theme",
       "keynote_create_presentation",
       "keynote_list_slides",
       "keynote_add_slide",
@@ -164,7 +166,7 @@ describe("Tool Registration", () => {
       "numbers_list_documents", "numbers_list_templates", "numbers_list_sheets", "numbers_list_tables",
       "numbers_read_table", "numbers_read_cell", "numbers_read_range", "numbers_get_table_info",
       "pages_list_documents", "pages_list_templates", "pages_get_body_text", "pages_get_paragraphs",
-      "keynote_list_presentations", "keynote_list_themes", "keynote_list_slides", "keynote_get_slide_content", "keynote_list_master_slides", "keynote_get_shape_info",
+      "keynote_list_presentations", "keynote_list_themes", "keynote_get_theme", "keynote_list_slides", "keynote_get_slide_content", "keynote_list_master_slides", "keynote_get_shape_info",
     ];
     const { tools } = await ctx.client.listTools();
     const byName = new Map(tools.map((t) => [t.name, t]));

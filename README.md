@@ -1,6 +1,6 @@
 # iwork-mcp
 
-MCP server for Apple iWork automation — 98 tools for Numbers, Pages, and Keynote.
+MCP server for Apple iWork automation — 100 tools for Numbers, Pages, and Keynote.
 
 One line to install. Works with Claude Desktop, Claude Code, Codex, and any MCP client.
 
@@ -158,12 +158,14 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `pages_super_resolution` | AI image upscaling — increase resolution while preserving quality (Creator Studio) |
 | `pages_remove_background` | AI background removal from images (Creator Studio) |
 
-### Keynote (32 tools)
+### Keynote (34 tools)
 
 | Tool | Description |
 |------|-------------|
 | `keynote_list_presentations` | List all open presentations |
 | `keynote_list_themes` | List available themes (e.g. White, Black, Gradient) |
+| `keynote_get_theme` | Get the current theme of a presentation |
+| `keynote_set_theme` | Change the theme of an existing presentation |
 | `keynote_create_presentation` | Create a new presentation |
 | `keynote_open_presentation` | Open a .key file |
 | `keynote_save_presentation` | Save a presentation |

@@ -288,6 +288,27 @@ describe("Keynote Integration", async () => {
     assert.equal(after.rotation, 15);
   });
 
+  // ── Theme tools ──
+
+  it("gets and sets the presentation theme", async () => {
+    // Read current theme
+    const { json: before } = await call(ctx, "keynote_get_theme", { documentName: docName });
+    assert.ok(before.theme, "Should return a theme name");
+
+    // Change to a different theme
+    const targetTheme = before.theme === "Black" ? "White" : "Black";
+    const { json: setResult } = await call(ctx, "keynote_set_theme", {
+      documentName: docName,
+      themeName: targetTheme,
+    });
+    assert.ok(setResult.themeSet);
+    assert.equal(setResult.theme, targetTheme);
+
+    // Verify it stuck
+    const { json: after } = await call(ctx, "keynote_get_theme", { documentName: docName });
+    assert.equal(after.theme, targetTheme);
+  });
+
   // ── Export to PDF ──
 
   it("exports to PDF", async () => {

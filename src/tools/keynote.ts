@@ -60,6 +60,36 @@ export function registerKeynoteTools(server: McpServer): void {
   );
 
   server.tool(
+    "keynote_get_theme",
+    "Get the current theme of a Keynote presentation",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+    },
+    ANNOTATIONS.readOnly,
+    async ({ documentName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Keynote");
+      const doc = app.documents.byName(params.documentName);
+      return JSON.stringify({ theme: doc.documentTheme().name() });
+    `, { documentName })),
+  );
+
+  server.tool(
+    "keynote_set_theme",
+    "Change the theme of an existing Keynote presentation (use keynote_list_themes to see available themes)",
+    {
+      documentName: z.string().describe("Name of the open presentation"),
+      themeName: z.string().describe("Theme name to apply (e.g. 'White', 'Black', 'Gradient')"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, themeName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Keynote");
+      const doc = app.documents.byName(params.documentName);
+      doc.documentTheme = app.themes.byName(params.themeName);
+      return JSON.stringify({ themeSet: true, theme: doc.documentTheme().name() });
+    `, { documentName, themeName })),
+  );
+
+  server.tool(
     "keynote_create_presentation",
     "Create a new Keynote presentation (optionally with a theme — use keynote_list_themes to see available themes)",
     {

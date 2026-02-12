@@ -3,7 +3,7 @@
 ## Project Overview
 - MCP server for Apple iWork (Numbers, Pages, Keynote) automation via JXA/osascript
 - TypeScript, ESM, uses `@modelcontextprotocol/sdk` v1.26.0
-- 98 tools total: 46 Numbers, 20 Pages, 32 Keynote (includes 8 Creator Studio AI tools)
+- 100 tools total: 46 Numbers, 20 Pages, 34 Keynote (includes 8 Creator Studio AI tools)
 - npm: `iwork-mcp` | GitHub: `reichenbach/iwork_mcp` (PRIVATE)
 - Requirements: macOS 13+, iWork 14.0+, Node.js 18+
 - Supports both standard iWork and iWork 15.1 "Creator Studio" app bundles
@@ -62,7 +62,7 @@
 - `npm run test:integration` — CRUD tests for Numbers/Pages/Keynote, ~8s, needs apps
 - `npm run test:all` — both tiers combined
 - Uses `node:test` + `tsx`, in-memory MCP transport (no subprocess)
-- 83 tests total: 34 unit + 49 integration
+- 84 tests total: 34 unit + 50 integration
 
 ## Build & Publish
 - `npm run build` -> `tsc && chmod +x dist/index.js`
@@ -75,3 +75,4 @@
 - All 6 Pages text tools (pages_add_text, pages_get_paragraphs, pages_format_text, pages_insert_text_at, pages_delete_text, pages_replace_text) work via `doc.bodyText.paragraphs` workarounds. The original `doc.paragraphs` API remains broken on Pages 14.5.
 - Pages tables are NOT accessible via JXA — `doc.tables()` throws -2763. Cannot implement pages_read_table or pages_write_table_cell.
 - Keynote shape fill/border colors are not exposed by JXA. Only opacity, rotation, and text formatting are settable via `keynote_format_shape`.
+- Pages paragraph styles (Title, Heading 1, Body, etc.) are NOT exposed by Apple's scripting dictionary. Only font, size, and color are accessible. No alignment, indent, or line spacing either.
