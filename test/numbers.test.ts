@@ -520,6 +520,41 @@ describe("Numbers Integration", async () => {
     assert.ok(json.height > 0);
   });
 
+  // ── Image tests ──
+
+  it("adds an image to a sheet and lists images", async () => {
+    // Create a small test image (1x1 red pixel PNG)
+    const imgPath = `/tmp/iwork_test_${suffix}.png`;
+    tmpFiles.push(imgPath);
+    const { writeFileSync } = await import("node:fs");
+    const { Buffer } = await import("node:buffer");
+    // Minimal valid 1x1 red PNG (67 bytes)
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
+      "base64"
+    );
+    writeFileSync(imgPath, png);
+
+    const sheet = `Img_${suffix}`;
+    await call(ctx, "numbers_add_sheet", { documentName: docName, sheetName: sheet });
+
+    const { json: addResult } = await call(ctx, "numbers_add_image", {
+      documentName: docName,
+      filePath: imgPath,
+      sheetName: sheet,
+    });
+    assert.ok(addResult.added);
+
+    const { json: listResult } = await call(ctx, "numbers_list_images", {
+      documentName: docName,
+      sheetName: sheet,
+    });
+    assert.ok(Array.isArray(listResult));
+    assert.ok(listResult.length >= 1);
+    assert.ok(listResult[0].width > 0);
+    assert.ok(listResult[0].height > 0);
+  });
+
   // ── Error on invalid document ──
 
   it("returns isError for a nonexistent document", async () => {

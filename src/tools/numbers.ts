@@ -1509,6 +1509,69 @@ export function registerNumbersTools(server: McpServer): void {
     })),
   );
 
+  // ── Image Tools ──
+
+  server.tool(
+    "numbers_add_image",
+    "Add an image to a sheet from a file path",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      filePath: z.string().startsWith("/").describe("Absolute path to the image file"),
+      x: z.number().optional().describe("X position in points"),
+      y: z.number().optional().describe("Y position in points"),
+      width: z.number().positive().optional().describe("Width in points"),
+      height: z.number().positive().optional().describe("Height in points"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+    },
+    ANNOTATIONS.readWrite,
+    async ({ documentName, filePath, x, y, width, height, sheetName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const img = app.Image({ file: Path(params.filePath) });
+      sheet.images.push(img);
+      const added = sheet.images[sheet.images.length - 1];
+      if (params.x != null || params.y != null) {
+        var pos = added.position();
+        added.position = { x: params.x != null ? params.x : pos.x, y: params.y != null ? params.y : pos.y };
+      }
+      if (params.width != null) added.width = params.width;
+      if (params.height != null) added.height = params.height;
+      return JSON.stringify({
+        added: true,
+        imageCount: sheet.images.length,
+        width: added.width(),
+        height: added.height(),
+        position: added.position(),
+      });
+    `, { documentName, filePath, x: x ?? null, y: y ?? null, width: width ?? null, height: height ?? null, sheetName: sheetName ?? null })),
+  );
+
+  server.tool(
+    "numbers_list_images",
+    "List all images on a sheet with their positions and sizes",
+    {
+      documentName: z.string().describe("Name of the open document"),
+      sheetName: z.string().optional().describe("Sheet name (defaults to first sheet)"),
+    },
+    ANNOTATIONS.readOnly,
+    async ({ documentName, sheetName }) => handleJXA(() => runJXA<string>(`
+      const app = Application("Numbers");
+      const doc = app.documents.byName(params.documentName);
+      const sheet = params.sheetName ? doc.sheets.byName(params.sheetName) : doc.sheets[0];
+      const imgs = sheet.images();
+      const result = [];
+      for (var i = 0; i < imgs.length; i++) {
+        var img = imgs[i];
+        var entry = { index: i, width: img.width(), height: img.height(), position: img.position() };
+        try { entry.fileName = img.fileName(); } catch(e) {}
+        try { entry.description = img.description(); } catch(e) {}
+        result.push(entry);
+      }
+      return JSON.stringify(result);
+    `, { documentName, sheetName: sheetName ?? null })),
+  );
+
   // ── Chart Tool ──
 
   server.tool(

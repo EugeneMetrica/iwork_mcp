@@ -20,15 +20,15 @@ describe("Tool Registration", () => {
     assert.ok(instructions.includes("iWork"), "Instructions should mention iWork");
   });
 
-  it("registers all 104 tools", async () => {
+  it("registers all 109 tools", async () => {
     const { tools } = await ctx.client.listTools();
-    assert.equal(tools.length, 104);
+    assert.equal(tools.length, 109);
   });
 
-  it("registers 46 Numbers tools", async () => {
+  it("registers 48 Numbers tools", async () => {
     const { tools } = await ctx.client.listTools();
     const numbers = tools.filter((t) => t.name.startsWith("numbers_"));
-    assert.equal(numbers.length, 46);
+    assert.equal(numbers.length, 48);
   });
 
   it("registers 21 Pages tools", async () => {
@@ -37,10 +37,10 @@ describe("Tool Registration", () => {
     assert.equal(pages.length, 21);
   });
 
-  it("registers 37 Keynote tools", async () => {
+  it("registers 40 Keynote tools", async () => {
     const { tools } = await ctx.client.listTools();
     const keynote = tools.filter((t) => t.name.startsWith("keynote_"));
-    assert.equal(keynote.length, 37);
+    assert.equal(keynote.length, 40);
   });
 
   it("every tool has a description", async () => {
@@ -84,6 +84,8 @@ describe("Tool Registration", () => {
       "numbers_format_range",
       "numbers_auto_format",
       "numbers_copy_range",
+      "numbers_add_image",
+      "numbers_list_images",
       "numbers_add_chart",
       "numbers_magic_fill",
       "numbers_super_resolution",
@@ -138,6 +140,9 @@ describe("Tool Registration", () => {
       "keynote_set_slide_layout",
       "keynote_add_table_to_slide",
       "keynote_read_slide_table",
+      "keynote_write_slide_table",
+      "keynote_add_line",
+      "keynote_list_slide_items",
       "keynote_create_presentation_with_slides",
       "keynote_clean_up_slide",
       "keynote_super_resolution",
@@ -170,7 +175,8 @@ describe("Tool Registration", () => {
       "numbers_list_documents", "numbers_list_templates", "numbers_list_sheets", "numbers_list_tables",
       "numbers_read_table", "numbers_read_cell", "numbers_read_range", "numbers_get_table_info",
       "pages_list_documents", "pages_list_templates", "pages_get_body_text", "pages_get_paragraphs", "pages_get_document_info",
-      "keynote_list_presentations", "keynote_list_themes", "keynote_get_theme", "keynote_list_slides", "keynote_get_slide_content", "keynote_list_master_slides", "keynote_get_shape_info", "keynote_read_slide_table",
+      "numbers_list_images",
+      "keynote_list_presentations", "keynote_list_themes", "keynote_get_theme", "keynote_list_slides", "keynote_get_slide_content", "keynote_list_master_slides", "keynote_get_shape_info", "keynote_read_slide_table", "keynote_list_slide_items",
     ];
     const { tools } = await ctx.client.listTools();
     const byName = new Map(tools.map((t) => [t.name, t]));

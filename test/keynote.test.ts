@@ -355,6 +355,81 @@ describe("Keynote Integration", async () => {
     assert.equal(readResult.data[2][2], 400);
   });
 
+  // ── Write to slide table ──
+
+  it("writes data to an existing slide table", async () => {
+    // Add a slide with a table
+    await call(ctx, "keynote_add_slide", { documentName: docName });
+    const { json: slides } = await call(ctx, "keynote_list_slides", { documentName: docName });
+    const writeSlide = slides.length;
+
+    await call(ctx, "keynote_add_table_to_slide", {
+      documentName: docName,
+      slideNumber: writeSlide,
+      rows: 2,
+      columns: 2,
+    });
+
+    // Write data to the table
+    const { json: writeResult } = await call(ctx, "keynote_write_slide_table", {
+      documentName: docName,
+      slideNumber: writeSlide,
+      tableIndex: 0,
+      data: [["Name", "Score"], ["Alice", 95]],
+    });
+    assert.ok(writeResult.written);
+    assert.equal(writeResult.cellsWritten, 4);
+
+    // Read back and verify
+    const { json: readResult } = await call(ctx, "keynote_read_slide_table", {
+      documentName: docName,
+      slideNumber: writeSlide,
+      tableIndex: 0,
+    });
+    assert.equal(readResult.data[0][0], "Name");
+    assert.equal(readResult.data[0][1], "Score");
+    assert.equal(readResult.data[1][0], "Alice");
+    assert.equal(readResult.data[1][1], 95);
+  });
+
+  // ── Add line ──
+
+  it("adds a line to a slide", async () => {
+    await call(ctx, "keynote_add_slide", { documentName: docName });
+    const { json: slides } = await call(ctx, "keynote_list_slides", { documentName: docName });
+    const lineSlide = slides.length;
+
+    const { json } = await call(ctx, "keynote_add_line", {
+      documentName: docName,
+      slideNumber: lineSlide,
+      startX: 100,
+      startY: 200,
+      endX: 500,
+      endY: 200,
+    });
+    assert.ok(json.added);
+    assert.ok(json.startPoint);
+    assert.ok(json.endPoint);
+  });
+
+  // ── List slide items ──
+
+  it("lists all items on a slide", async () => {
+    // Use a slide that has content (slide 1 has title, body, shapes from earlier tests)
+    const { json } = await call(ctx, "keynote_list_slide_items", {
+      documentName: docName,
+      slideNumber: 1,
+    });
+    assert.equal(json.slideNumber, 1);
+    assert.ok(typeof json.itemCount === "number");
+    assert.ok(Array.isArray(json.items));
+    assert.equal(json.itemCount, json.items.length);
+    // Each item should have a type
+    for (const item of json.items) {
+      assert.ok(["shape", "textItem", "image", "table", "line"].includes(item.type), `Unknown item type: ${item.type}`);
+    }
+  });
+
   // ── Export to PDF ──
 
   it("exports to PDF", async () => {

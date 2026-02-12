@@ -1,6 +1,6 @@
 # iwork-mcp
 
-MCP server for Apple iWork automation — 104 tools for Numbers, Pages, and Keynote.
+MCP server for Apple iWork automation — 109 tools for Numbers, Pages, and Keynote.
 
 One line to install. Works with Claude Desktop, Claude Code, Codex, and any MCP client.
 
@@ -82,7 +82,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 
 ## Tools
 
-### Numbers (46 tools)
+### Numbers (48 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -127,6 +127,8 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `numbers_format_range` | Apply multiple formatting rules to different cell ranges in one call |
 | `numbers_auto_format` | Auto-detect and apply formatting (currency, percent, number) from string values |
 | `numbers_copy_range` | Copy values between open documents |
+| `numbers_add_image` | Add an image to a sheet from a file path |
+| `numbers_list_images` | List all images on a sheet with positions and sizes |
 | `numbers_add_chart` | Create charts (bar, line, pie, area, scatter) from table data |
 | `numbers_create_sheet_with_table` | Create a full sheet with table, data, and formatting in one fast call |
 | `numbers_magic_fill` | AI pattern fill — provide examples, fill remaining cells automatically (Creator Studio) |
@@ -159,7 +161,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `pages_super_resolution` | AI image upscaling — increase resolution while preserving quality (Creator Studio) |
 | `pages_remove_background` | AI background removal from images (Creator Studio) |
 
-### Keynote (37 tools)
+### Keynote (40 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -174,6 +176,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `keynote_close_presentation` | Close a presentation |
 | `keynote_list_slides` | List slides with titles |
 | `keynote_get_slide_content` | Read all content from a slide |
+| `keynote_list_slide_items` | List all items on a slide with types, positions, and sizes |
 | `keynote_list_master_slides` | List available slide layouts |
 | `keynote_add_slide` | Add a slide with optional layout |
 | `keynote_delete_slide` | Delete a slide |
@@ -185,6 +188,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `keynote_set_slide_body` | Set slide body / bullet points |
 | `keynote_add_image_to_slide` | Add an image to a slide |
 | `keynote_add_shape` | Add a shape with text |
+| `keynote_add_line` | Add a line between two points on a slide |
 | `keynote_position_item` | Move/resize a shape, image, or text item by type and index |
 | `keynote_align_items` | Align 2+ items along an edge or center (left, right, top, bottom, center, middle) |
 | `keynote_distribute_items` | Evenly space 3+ items horizontally or vertically |
@@ -192,6 +196,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `keynote_format_shape` | Set opacity, rotation, and text font/size/color/alignment on a shape |
 | `keynote_add_table_to_slide` | Add a table to a slide with optional data |
 | `keynote_read_slide_table` | Read all data from a table on a slide |
+| `keynote_write_slide_table` | Write data to cells of an existing table on a slide |
 | `keynote_set_presenter_notes` | Set presenter notes |
 | `keynote_set_transition` | Set slide transition effect |
 | `keynote_start_slideshow` | Start playing the presentation |
