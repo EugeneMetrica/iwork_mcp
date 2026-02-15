@@ -62,7 +62,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 ### Requirements
 
 - **macOS 13 Ventura or later** (tested on macOS 14 Sonoma)
-- **Numbers, Pages, and Keynote 14.0+** (tested on 14.5; free from the App Store)
+- **Numbers, Pages, and Keynote 14.0+** (tested on 14.5 and 15.1 Creator Studio; free from the App Store)
 - [Node.js 18+](https://nodejs.org) (`brew install node` if you have Homebrew)
 - On first use, macOS will ask to grant Automation permission — click OK
 
@@ -262,7 +262,7 @@ To test locally with Claude Desktop, point to your local build:
 
 iWork's scripting dictionary defines what's automatable — some features (charts, track changes, comments) simply aren't exposed by Apple. iwork-mcp covers everything the API allows. I'm hopeful Apple expands automation capabilities as AI tooling becomes more integrated across the ecosystem.
 
-- **macOS only** — requires Numbers, Pages, and Keynote 14.0+ (free from the App Store)
+- **macOS only** — requires Numbers, Pages, and Keynote 14.0+ (tested on 14.5 and 15.1 Creator Studio; free from the App Store)
 - **Apps are visible** — iWork apps launch and show windows; there's no headless mode
 - **~430ms per call** — osascript startup overhead per tool invocation (use compound tools like `create_sheet_with_table`, `create_document_with_content`, and `create_presentation_with_slides` for speed)
 - **Charts are basic** — `numbers_add_chart` creates data-bound charts (bar, line, pie, area, scatter) via an AppleScript bridge workaround, but chart customization (titles, labels, colors) is not exposed by Apple's scripting dictionary
