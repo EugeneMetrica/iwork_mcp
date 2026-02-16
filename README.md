@@ -61,12 +61,12 @@ codex mcp add iwork -- npx -y iwork-mcp
 
 ### Requirements
 
-- **macOS 13 Ventura or later** (tested on macOS 14 Sonoma)
-- **Numbers, Pages, and Keynote 14.0+** (tested on 14.5 and 15.1 Creator Studio; free from the App Store)
+- **macOS 13 Ventura or later** (tested on macOS 14 Sonoma and macOS 26 Tahoe)
+- **Numbers, Pages, and Keynote 14.0+** (tested on 14.5 and 15.1.1 Creator Studio; free from the App Store)
 - [Node.js 18+](https://nodejs.org) (`brew install node` if you have Homebrew)
 - On first use, macOS will ask to grant Automation permission — click OK
 
-> **iWork 15.1+ (Creator Studio)**: Fully supported. The new Creator Studio versions (January 2026) are auto-detected and used when available. Creator Studio subscribers get 8 additional AI tools (Magic Fill, Clean Up Slide, Super Resolution, Remove Background). See [Creator Studio known issues](#creator-studio-known-issues) below for export/save-as limitations.
+> **iWork 15.1+ (Creator Studio)**: Fully supported — tested on 15.1.1 (February 2026). Creator Studio is auto-detected and used when available. Creator Studio subscribers get 8 additional AI tools (Magic Fill, Clean Up Slide, Super Resolution, Remove Background). See [Creator Studio known issues](#creator-studio-known-issues) below for export/save-as limitations.
 
 ## Examples
 
@@ -273,7 +273,7 @@ iWork's scripting dictionary defines what's automatable — some features (chart
 
 ### Creator Studio known issues
 
-iWork 15.1 Creator Studio has scripting bugs that iwork-mcp works around automatically:
+iWork 15.1–15.1.1 Creator Studio has scripting bugs that iwork-mcp works around automatically:
 
 - **`app.export()` fails** with error (6) for all non-PDF formats — "document could not be exported". PDF export works via a Quick Look workaround (`qlmanage`). Non-PDF export formats (Excel, CSV, Word, EPUB, PowerPoint, HTML, images) are broken on Creator Studio with no known workaround.
 - **`doc.save()` hangs** and shows a popup dialog that never returns (both with and without a path argument). Save-as works via a file copy workaround (copies the auto-saved iCloud file, then closes and reopens from the new path). Plain save (no path) is handled by iCloud auto-save automatically.

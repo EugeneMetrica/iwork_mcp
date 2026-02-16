@@ -6,7 +6,7 @@
 - 113 tools total: 50 Numbers, 22 Pages, 41 Keynote (includes 8 Creator Studio AI tools)
 - npm: `iwork-mcp` | GitHub: `reichenbach/iwork_mcp` (PRIVATE)
 - Requirements: macOS 13+, iWork 14.0+, Node.js 18+
-- Supports both standard iWork and iWork 15.1 "Creator Studio" app bundles
+- Supports both standard iWork and iWork 15.1+ "Creator Studio" app bundles (tested on 15.1.1)
 
 ## Key Technical Details
 - MCP SDK imports: `@modelcontextprotocol/sdk/server/mcp.js` and `.../server/stdio.js`
