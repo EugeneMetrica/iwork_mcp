@@ -61,7 +61,7 @@ codex mcp add iwork -- npx -y iwork-mcp
 
 ### Requirements
 
-- **macOS 13 Ventura or later** (tested on macOS 14 Sonoma and macOS 26 Tahoe)
+- **macOS 13 Ventura or later** (tested on macOS 14 Sonoma)
 - **Numbers, Pages, and Keynote 14.0+** (tested on 14.5 and 15.1.1 Creator Studio; free from the App Store)
 - [Node.js 18+](https://nodejs.org) (`brew install node` if you have Homebrew)
 - On first use, macOS will ask to grant Automation permission — click OK
