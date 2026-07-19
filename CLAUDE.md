@@ -69,7 +69,10 @@
 - `npm run build` -> `tsc && chmod +x dist/index.js`
 - `npm publish` requires 2FA (OTP). User publishes manually.
 - Always bump version before publish (npm rejects duplicates)
-- **Keep version in sync**: bump -> build -> test -> commit -> push -> publish
+- **Keep version in sync**: bump -> build -> test -> commit -> push -> publish -> GitHub release
+- After each npm publish, create the matching GitHub release server-side: `gh release create vX.Y.Z --generate-notes`. GitHub Releases do NOT update automatically on publish — they lag behind npm unless this step runs (v0.8.6 sat as "Latest" long after 0.8.7 shipped).
+- **NEVER `git push --tags`** — stale local tags may pin old, rewritten history. Always create tags server-side via `gh release create`.
+- Commits must use the noreply email (`755929+reichenbach@users.noreply.github.com`); it's set as repo-local git config. Never commit with a personal address.
 - Screenshots must be JPEG not PNG — large PNGs cause 503 errors on GitHub README rendering
 
 ## Known Issues
