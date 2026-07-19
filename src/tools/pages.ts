@@ -554,8 +554,28 @@ export function registerPagesTools(server: McpServer): void {
       if (typeof v === "boolean") return v ? "true" : "false";
       return asQuote(v);
     }
+    // Creator Studio auto-save transiently renames docs ("X" -> "X.pages" and
+    // back) after edits, so name-based AppleScript references race the flip
+    // even when a name probe just succeeded. Resolve the document's stable id
+    // once (polling both names across the rename window) and reference
+    // 'document id "UUID"' everywhere — immune to renames.
+    (function resolveDocAS() {
+      const extName = params.documentName + ".pages";
+      for (let attempt = 0; attempt < 8; attempt++) {
+        for (const nm of [params.documentName, extName]) {
+          try {
+            const docId = descToJS(runAS('tell application "Pages" to id of document ' + asQuote(nm)));
+            if (docId) { params.__docRef = 'document id ' + asQuote(docId); return; }
+          } catch (e) {}
+        }
+        delay(0.3);
+      }
+      // unreachable doc: fall back to the name; the original error will surface
+      params.__docRef = "document " + asQuote(params.documentName);
+    })();
+    function docRef() { return params.__docRef; }
     function tableRef() {
-      return "table " + params.tableIndex + " of document " + asQuote(params.documentName);
+      return "table " + params.tableIndex + " of " + docRef();
     }
   `;
 
@@ -569,7 +589,7 @@ export function registerPagesTools(server: McpServer): void {
     async ({ documentName }) => handleJXA(() => runJXA<string>(`
       ${PAGES_TABLE_HELPERS}
       const src = 'tell application "Pages"\\n' +
-        'tell document ' + asQuote(params.documentName) + '\\n' +
+        'tell ' + docRef() + '\\n' +
         'set out to {}\\n' +
         'repeat with t in tables\\n' +
         'set end of out to {name of t, row count of t, column count of t, header row count of t, header column count of t}\\n' +
