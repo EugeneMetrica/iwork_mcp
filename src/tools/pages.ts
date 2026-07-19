@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { runJXA, OsascriptError, isCreatorStudio, creatorStudioSaveAs, creatorStudioExportPDF, clickMenuItem, resolveAppName } from "../jxa.js";
+import { runJXA, OsascriptError, isCreatorStudio, creatorStudioSaveAs, creatorStudioExportPDF, clickMenuItem, resolveAppName, pagesInsertTableViaUI } from "../jxa.js";
 import { ANNOTATIONS } from "../annotations.js";
 
 function toolResult(text: string, isError = false) {
@@ -487,20 +487,28 @@ export function registerPagesTools(server: McpServer): void {
     "Insert a table into the document",
     {
       documentName: z.string().describe("Name of the open document"),
-      rows: z.number().int().positive().optional().describe("Number of rows (default: 3)"),
-      columns: z.number().int().positive().optional().describe("Number of columns (default: 3)"),
+      rows: z.number().int().positive().optional().describe("Number of rows (omit to keep the app's default table size)"),
+      columns: z.number().int().positive().optional().describe("Number of columns (omit to keep the app's default table size)"),
     },
     ANNOTATIONS.readWrite,
-    async ({ documentName, rows, columns }) => handleJXA(() => runJXA<string>(`
-      const app = Application("Pages");
-      const doc = app.documents.byName(params.documentName);
-      const props = {};
-      if (params.rows) props.rowCount = params.rows;
-      if (params.columns) props.columnCount = params.columns;
-      const table = app.Table(props);
-      doc.tables.push(table);
-      return JSON.stringify({ added: true, name: table.name() });
-    `, { documentName, rows: rows ?? null, columns: columns ?? null })),
+    async ({ documentName, rows, columns }) => handleJXA(async () => {
+      // Pages 15.x (Creator Studio): doc.tables.push() and AppleScript
+      // `make new table` both fail with -2763. Insert via menu UI scripting.
+      if (resolveAppName("Pages") !== "Pages") {
+        const name = await pagesInsertTableViaUI(documentName, rows, columns);
+        return JSON.stringify({ added: true, name });
+      }
+      return runJXA<string>(`
+        const app = Application("Pages");
+        const doc = app.documents.byName(params.documentName);
+        const props = {};
+        if (params.rows) props.rowCount = params.rows;
+        if (params.columns) props.columnCount = params.columns;
+        const table = app.Table(props);
+        doc.tables.push(table);
+        return JSON.stringify({ added: true, name: table.name() });
+      `, { documentName, rows: rows ?? null, columns: columns ?? null });
+    }),
   );
 
   // ── Page Break Tool ──

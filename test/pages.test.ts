@@ -237,6 +237,27 @@ describe("Pages Integration", async () => {
     assert.ok(body.text.includes("Test Title"));
   });
 
+  // ── Table insertion ──
+  // On Creator Studio 15.x this goes through UI scripting (menu clicks);
+  // uses its own document so the table doesn't shift paragraph indices above.
+
+  it("adds a table", async () => {
+    const { json: created } = await call(ctx, "pages_create_document") as { json: { name: string } };
+    const tableDoc = created.name;
+    try {
+      const { json, text, isError } = await call(ctx, "pages_add_table", {
+        documentName: tableDoc,
+        rows: 3,
+        columns: 4,
+      }) as { json: { added: boolean; name: string } | null; text: string; isError?: boolean };
+      assert.ok(!isError, `pages_add_table failed: ${text}`);
+      assert.ok(json?.added);
+      assert.ok(json?.name.length > 0, "Should return the new table's name");
+    } finally {
+      await call(ctx, "pages_close_document", { documentName: tableDoc, saving: "no" });
+    }
+  });
+
   // ── Error on invalid document ──
 
   it("returns isError for a nonexistent document", async () => {

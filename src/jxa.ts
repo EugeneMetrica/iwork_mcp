@@ -100,6 +100,114 @@ export async function clickMenuItem(
 }
 
 /**
+ * Creator Studio workaround for table insertion in Pages.
+ * `doc.tables.push()` and AppleScript `make new table` both fail with -2763
+ * ("Don't know how to create TMAScriptTableInfoProxy") on Pages 15.x, but
+ * existing tables can be read/resized via AppleScript. So: insert via the
+ * Insert > Table > Basic menu (System Events), then resize to the requested
+ * dimensions. An insertion point in the body text is required to enable the
+ * menu — established by clicking into the body, scanning top-down (a click
+ * can land on a table/image, which selects it and disables Insert > Table).
+ * Synthetic keystrokes are deliberately avoided: secure keyboard entry (e.g.
+ * a password field focused in another app) silently blocks them, but not
+ * mouse clicks or menu clicks.
+ * Returns the new table's name.
+ */
+export async function pagesInsertTableViaUI(
+  documentName: string,
+  rows?: number,
+  columns?: number,
+): Promise<string> {
+  // Resolve the document name first (auto-save may have appended ".pages")
+  const resolvedDocName = await runJXA<string>(
+    `
+    const app = Application("Pages");
+    return JSON.stringify(app.documents.byName(params.documentName).name());
+    `,
+    { documentName },
+    { label: "pagesInsertTableViaUI:resolveName" },
+  );
+
+  const script = `
+on run argv
+  set docName to item 1 of argv
+  set newRows to (item 2 of argv) as integer
+  set newCols to (item 3 of argv) as integer
+  tell application "${resolveAppName("Pages")}"
+    activate
+    try
+      set index of window docName to 1
+    on error
+      try
+        set index of window (docName & ".pages") to 1
+      end try
+    end try
+    set frontName to name of front document
+    if frontName is not docName and frontName is not (docName & ".pages") then
+      error "Could not bring document " & docName & " to front (front document is " & frontName & ")"
+    end if
+    set beforeNames to name of every table of front document
+  end tell
+  tell application "System Events"
+    tell process "${processName("Pages")}"
+      repeat 10 times
+        set frontmost to true
+        delay 0.3
+        if frontmost then exit repeat
+      end repeat
+      set sa to scroll area 1 of splitter group 1 of window 1
+      set {sx, sy} to position of sa
+      set {sw, sh} to size of sa
+      set ok to false
+      set yOff to 90
+      repeat while yOff < (sh - 100)
+        click at {sx + (sw div 2), sy + yOff}
+        delay 0.4
+        if enabled of menu item "Basic" of menu "Table" of menu item "Table" of menu "Insert" of menu bar 1 then
+          set ok to true
+          exit repeat
+        end if
+        set yOff to yOff + 70
+      end repeat
+      if not ok then error "Could not place an insertion point in the document body to insert the table. Make sure this app has Accessibility permission (System Settings > Privacy & Security > Accessibility) and the document body is editable."
+      click menu item "Table" of menu "Insert" of menu bar 1
+      delay 0.4
+      click menu item "Basic" of menu "Table" of menu item "Table" of menu "Insert" of menu bar 1
+    end tell
+  end tell
+  delay 1.0
+  tell application "${resolveAppName("Pages")}"
+    tell front document
+      set afterNames to name of every table
+      if (count of afterNames) is not ((count of beforeNames) + 1) then
+        error "Table insertion via UI scripting did not take effect. Make sure this app has Accessibility permission (System Settings > Privacy & Security > Accessibility)."
+      end if
+      set newName to ""
+      repeat with n in afterNames
+        if beforeNames does not contain (n as text) then set newName to (n as text)
+      end repeat
+      if newRows > 0 then set row count of table newName to newRows
+      if newCols > 0 then set column count of table newName to newCols
+      return newName
+    end tell
+  end tell
+end run
+`;
+
+  try {
+    const { stdout } = await execFileAsync(
+      "/usr/bin/osascript",
+      ["-e", script, resolvedDocName, String(rows ?? 0), String(columns ?? 0)],
+      { timeout: 30_000 },
+    );
+    return stdout.trim();
+  } catch (err) {
+    const e = err as { stderr?: string; message?: string; code?: number };
+    throw new OsascriptError(e.stderr || e.message || String(err), typeof e.code === "number" ? e.code : null);
+  }
+}
+
+/**
  * Creator Studio workaround for "Save As" (doc.save({in:}) hangs).
  * Copies the auto-saved iCloud file, then closes + reopens from the new path.
  * Returns the new document name.

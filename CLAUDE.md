@@ -43,6 +43,7 @@
 - **Pages tables inaccessible via JXA**: `doc.tables()` throws -2763 "Don't know how to create TMAScriptTableInfoProxy". Pages tables can't be read/written programmatically.
 - **Keynote text colors**: Use 0-1 float range (like Pages), NOT 0-65535 int range (like Numbers). `paragraph.color = [r/255, g/255, b/255]`.
 - **Numbers auto-parses formatted strings**: Writing `"$1,234.56"` to a cell auto-converts to numeric 1234.56. To preserve strings, set `cell.format = "text"` before writing.
+- **Pages 15.x table creation broken**: `doc.tables.push()` AND AppleScript `make new table` both fail with -2763 "TMAScriptTableInfoProxy" (reading/resizing existing tables via AppleScript works). `pages_add_table` falls back to `pagesInsertTableViaUI()` in `src/jxa.ts` on Creator Studio: System Events menu-clicks Insert > Table > Basic, then resizes via AppleScript `set row count`/`set column count`. The insertion point is established by clicking into the body with a top-down position scan (a click on a table/image selects it and disables the menu). Synthetic keystrokes are deliberately avoided — secure keyboard entry from ANY app (e.g. a browser password field) silently blocks them, but not mouse/menu clicks. Menu clicks must be two-step (open parent menu, then click child) — direct 3-level submenu clicks silently no-op.
 
 ## File Structure
 - `src/index.ts` — entry point + install routing
@@ -73,6 +74,6 @@
 
 ## Known Issues
 - All 6 Pages text tools (pages_add_text, pages_get_paragraphs, pages_format_text, pages_insert_text_at, pages_delete_text, pages_replace_text) work via `doc.bodyText.paragraphs` workarounds. The original `doc.paragraphs` API remains broken on Pages 14.5.
-- Pages tables are NOT accessible via JXA — `doc.tables()` throws -2763. Cannot implement pages_read_table or pages_write_table_cell.
+- Pages tables are NOT accessible via JXA — `doc.tables()` throws -2763. Plain AppleScript CAN read/resize existing Pages tables (used by the PR #5 table tools). Table creation is broken in both JXA and AppleScript on Pages 15.x; `pages_add_table` uses a UI-scripting workaround on Creator Studio (see Critical JXA Bugs) which requires Accessibility permission for the host app.
 - Keynote shape fill/border colors are not exposed by JXA. Only opacity, rotation, and text formatting are settable via `keynote_format_shape`.
 - Pages paragraph styles (Title, Heading 1, Body, etc.) are NOT exposed by Apple's scripting dictionary. Only font, size, and color are accessible. No alignment, indent, or line spacing either.
