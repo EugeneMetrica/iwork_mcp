@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { OsascriptError, injectDocumentNameResolution, isCreatorStudio } from "../src/jxa.js";
+import { OsascriptError, injectDocumentNameResolution, isCreatorStudio, isCreatorStudioApp, runJXA } from "../src/jxa.js";
 
 describe("OsascriptError", () => {
   it("is an instance of Error", () => {
@@ -157,5 +157,39 @@ describe("injectDocumentNameResolution", () => {
         `expected extension ${ext} for ${appName}`,
       );
     }
+  });
+});
+
+describe("isCreatorStudioApp", () => {
+  const mixed = { Numbers: "Numbers Creator Studio", Pages: "Pages", Keynote: "Keynote" };
+  const none = { Numbers: "Numbers", Pages: "Pages", Keynote: "Keynote" };
+
+  it("detects per app in a mixed installation (CS Numbers only)", () => {
+    assert.equal(isCreatorStudioApp(mixed, "Numbers"), true);
+    assert.equal(isCreatorStudioApp(mixed, "Pages"), false);
+    assert.equal(isCreatorStudioApp(mixed, "Keynote"), false);
+  });
+
+  it("without an app argument reports whether any CS app is installed", () => {
+    assert.equal(isCreatorStudioApp(mixed), true);
+    assert.equal(isCreatorStudioApp(none), false);
+  });
+
+  it("reports false for a specific app when standard iWork is installed", () => {
+    assert.equal(isCreatorStudioApp(none, "Numbers"), false);
+    assert.equal(isCreatorStudioApp(none, "Keynote"), false);
+  });
+});
+
+describe("runJXA timeout", () => {
+  it("reports a readable hung error with the operation label", async () => {
+    await assert.rejects(
+      runJXA("delay(3)", undefined, { timeout: 300, label: "probe-timeout" }),
+      (err: unknown) => {
+        assert.ok(err instanceof OsascriptError);
+        assert.match((err as Error).message, /probe-timeout timed out after 300 ms \(hung\)/);
+        return true;
+      },
+    );
   });
 });

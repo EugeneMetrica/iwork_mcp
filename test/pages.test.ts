@@ -2,7 +2,8 @@ import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { unlinkSync } from "node:fs";
 import { createTestServer, type TestContext } from "./helpers/server.js";
-import { isAppAvailable } from "./helpers/app-check.js";
+import { isAppAvailable, isAppRunning } from "./helpers/app-check.js";
+import { teardownAppDocuments } from "./helpers/teardown.js";
 
 async function call(ctx: TestContext, name: string, args: Record<string, unknown> = {}) {
   const result = await ctx.client.callTool({ name, arguments: args });
@@ -13,6 +14,8 @@ async function call(ctx: TestContext, name: string, args: Record<string, unknown
 }
 
 describe("Pages Integration", async () => {
+  // Must run before isAppAvailable: the availability probe launches the app.
+  const wasRunning = await isAppRunning("Pages");
   const available = await isAppAvailable("Pages");
   if (!available) {
     console.log("⏭  Skipping Pages tests — app not available");
@@ -23,6 +26,7 @@ describe("Pages Integration", async () => {
   let docName: string;
   const suffix = Date.now();
   const tmpFiles: string[] = [];
+  const tracked = new Set<string>();
 
   before(async () => {
     ctx = await createTestServer();
@@ -30,13 +34,8 @@ describe("Pages Integration", async () => {
 
   after(async () => {
     if (ctx) {
-      // Close ALL open Pages documents (catches leaked test docs)
-      try {
-        const { json: docs } = await call(ctx, "pages_list_documents");
-        for (const doc of docs as Array<{ name: string }>) {
-          try { await call(ctx, "pages_close_document", { documentName: doc.name, saving: "no" }); } catch {}
-        }
-      } catch {}
+      // Close only documents this suite created (plus any leaked test-prefixed docs)
+      await teardownAppDocuments({ client: ctx.client, app: "Pages", tracked, wasRunning });
       // Clean up temp files
       for (const f of tmpFiles) {
         try { unlinkSync(f); } catch {}
@@ -54,6 +53,7 @@ describe("Pages Integration", async () => {
       ],
     });
     docName = json.name;
+    tracked.add(docName);
     assert.ok(docName, "Document should have a name");
     assert.equal(json.paragraphCount, 3);
   });
@@ -227,11 +227,13 @@ describe("Pages Integration", async () => {
     }) as { json: { saved: boolean; name: string } };
     assert.ok(saveResult.saved);
     docName = saveResult.name;
+    tracked.add(docName);
 
     await call(ctx, "pages_close_document", { documentName: docName, saving: "no" });
 
     const { json: openResult } = await call(ctx, "pages_open_document", { filePath: tmpPath }) as { json: { name: string } };
     docName = openResult.name;
+    tracked.add(docName);
 
     const { json: body } = await call(ctx, "pages_get_body_text", { documentName: docName }) as { json: { text: string } };
     assert.ok(body.text.includes("Test Title"));
@@ -244,6 +246,7 @@ describe("Pages Integration", async () => {
   it("adds a table", async () => {
     const { json: created } = await call(ctx, "pages_create_document") as { json: { name: string } };
     const tableDoc = created.name;
+    tracked.add(tableDoc);
     try {
       const { json, text, isError } = await call(ctx, "pages_add_table", {
         documentName: tableDoc,
@@ -271,6 +274,7 @@ describe("Pages Integration", async () => {
     if (!invoice) return t.skip("no invoice template available");
     const { json } = await call(ctx, "pages_create_document", { templateName: invoice });
     tableDocName = json.name;
+    tracked.add(tableDocName);
     assert.ok(tableDocName);
   });
 
@@ -360,6 +364,14 @@ describe("Pages Integration", async () => {
       arguments: { documentName: "NoSuchDocument_999" },
     });
     assert.equal(result.isError, true);
+  });
+
+  it("returns isError on Creator Studio save without filePath", async (t) => {
+    const { isCreatorStudio } = await import("../src/jxa.js");
+    if (!isCreatorStudio("Pages")) return t.skip("Creator Studio only");
+    const result = await call(ctx, "pages_save_document", { documentName: "NoSuchDoc" });
+    assert.equal(result.isError, true, "CS save without filePath must not report success");
+    assert.ok(result.text.includes("filePath"), `error should mention filePath, got: ${result.text}`);
   });
 
   it("closes the document without saving", async () => {

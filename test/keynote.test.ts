@@ -2,7 +2,8 @@ import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { unlinkSync } from "node:fs";
 import { createTestServer, type TestContext } from "./helpers/server.js";
-import { isAppAvailable } from "./helpers/app-check.js";
+import { isAppAvailable, isAppRunning } from "./helpers/app-check.js";
+import { teardownAppDocuments } from "./helpers/teardown.js";
 
 async function call(ctx: TestContext, name: string, args: Record<string, unknown> = {}) {
   const result = await ctx.client.callTool({ name, arguments: args });
@@ -13,6 +14,8 @@ async function call(ctx: TestContext, name: string, args: Record<string, unknown
 }
 
 describe("Keynote Integration", async () => {
+  // Must run before isAppAvailable: the availability probe launches the app.
+  const wasRunning = await isAppRunning("Keynote");
   const available = await isAppAvailable("Keynote");
   if (!available) {
     console.log("⏭  Skipping Keynote tests — app not available");
@@ -23,6 +26,7 @@ describe("Keynote Integration", async () => {
   let docName: string;
   const suffix = Date.now();
   const tmpFiles: string[] = [];
+  const tracked = new Set<string>();
 
   before(async () => {
     ctx = await createTestServer();
@@ -30,13 +34,8 @@ describe("Keynote Integration", async () => {
 
   after(async () => {
     if (ctx) {
-      // Close ALL open Keynote presentations (catches leaked test docs)
-      try {
-        const { json: docs } = await call(ctx, "keynote_list_presentations");
-        for (const doc of docs as Array<{ name: string }>) {
-          try { await call(ctx, "keynote_close_presentation", { documentName: doc.name, saving: "no" }); } catch {}
-        }
-      } catch {}
+      // Close only documents this suite created (plus any leaked test-prefixed docs)
+      await teardownAppDocuments({ client: ctx.client, app: "Keynote", tracked, wasRunning });
       // Clean up temp files
       for (const f of tmpFiles) {
         try { unlinkSync(f); } catch {}
@@ -48,8 +47,31 @@ describe("Keynote Integration", async () => {
   it("creates a new presentation", async () => {
     const { json } = await call(ctx, "keynote_create_presentation");
     docName = json.name;
+    tracked.add(docName);
     assert.ok(docName, "Presentation should have a name");
     assert.ok(json.slideCount >= 1, "Should have at least one slide");
+  });
+
+  it("creates a deck with a RU theme alias at 1920×1080", async () => {
+    const { json, isError } = await call(ctx, "keynote_create_presentation", {
+      themeName: "Простая белая",
+    }) as { json: { name: string; width: number; height: number }; isError: boolean };
+    assert.ok(!isError, "RU theme alias 'Простая белая' should resolve");
+    tracked.add(json.name);
+    assert.ok(json.name);
+    assert.equal(json.width, 1920, "created deck should be 1920 wide");
+    assert.equal(json.height, 1080, "created deck should be 1080 high");
+    await call(ctx, "keynote_close_presentation", { documentName: json.name, saving: "no" });
+  });
+
+  it("applies a RU layout alias to a slide", async () => {
+    const { json, isError } = await call(ctx, "keynote_set_slide_layout", {
+      documentName: docName,
+      slideNumber: 1,
+      masterSlideName: "Только заголовок",
+    }) as { json: { layoutSet: boolean }; isError: boolean };
+    assert.ok(!isError, "RU layout alias 'Только заголовок' should resolve");
+    assert.ok(json.layoutSet);
   });
 
   it("lists slides", async () => {
@@ -498,6 +520,7 @@ describe("Keynote Integration", async () => {
       ],
     });
     const compoundDocName = json.name;
+    tracked.add(compoundDocName);
     assert.ok(compoundDocName);
     assert.equal(json.slideCount, 2);
     assert.equal(json.slides.length, 2);
@@ -519,6 +542,14 @@ describe("Keynote Integration", async () => {
 
     // Clean up
     await call(ctx, "keynote_close_presentation", { documentName: compoundDocName, saving: "no" });
+  });
+
+  it("returns isError on Creator Studio save without filePath", async (t) => {
+    const { isCreatorStudio } = await import("../src/jxa.js");
+    if (!isCreatorStudio("Keynote")) return t.skip("Creator Studio only");
+    const result = await call(ctx, "keynote_save_presentation", { documentName: "NoSuchDoc" });
+    assert.equal(result.isError, true, "CS save without filePath must not report success");
+    assert.ok(result.text.includes("filePath"), `error should mention filePath, got: ${result.text}`);
   });
 
   it("closes the presentation without saving", async () => {

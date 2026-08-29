@@ -167,7 +167,7 @@ describe("Tool Registration", () => {
         `${tool.name} is missing annotations`,
       );
       assert.equal(
-        tool.annotations!.openWorldHint,
+        tool.annotations.openWorldHint,
         false,
         `${tool.name} should have openWorldHint: false`,
       );
@@ -188,7 +188,7 @@ describe("Tool Registration", () => {
       const tool = byName.get(name);
       assert.ok(tool, `Missing tool: ${name}`);
       assert.equal(
-        tool!.annotations?.readOnlyHint,
+        tool.annotations?.readOnlyHint,
         true,
         `${name} should have readOnlyHint: true`,
       );
@@ -208,7 +208,7 @@ describe("Tool Registration", () => {
       const tool = byName.get(name);
       assert.ok(tool, `Missing tool: ${name}`);
       assert.equal(
-        tool!.annotations?.destructiveHint,
+        tool.annotations?.destructiveHint,
         true,
         `${name} should have destructiveHint: true`,
       );
