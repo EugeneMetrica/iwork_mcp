@@ -6,9 +6,10 @@
 - MCP server for Apple iWork (Numbers, Pages, Keynote) automation via JXA/osascript
 - TypeScript, ESM, uses `@modelcontextprotocol/sdk` v1.26.0
 - 117 tools total: 50 Numbers, 26 Pages, 41 Keynote (includes 8 Creator Studio AI tools)
-- npm: `iwork-mcp` | GitHub: `reichenbach/iwork_mcp` (PRIVATE)
+- npm: `iwork-mcp` | GitHub: `EugeneMetrica/iwork_mcp` (public; `origin` points here, fork of `reichenbach/iwork_mcp`)
 - Requirements: macOS 13+, iWork 14.0+, Node.js 18+
 - Supports both standard iWork and iWork 15.1+ "Creator Studio" app bundles (tested on 15.1.1)
+- **Any multi-step change is spec-driven: start with `/opsx:propose`, never with an edit** - see "Spec-Driven Workflow (OpenSpec)" below.
 
 ## Key Technical Details
 - MCP SDK imports: `@modelcontextprotocol/sdk/server/mcp.js` and `.../server/stdio.js`
@@ -48,7 +49,8 @@
 - **Pages 15.x table creation broken**: `doc.tables.push()` AND AppleScript `make new table` both fail with -2763 "TMAScriptTableInfoProxy" (reading/resizing existing tables via AppleScript works). `pages_add_table` falls back to `pagesInsertTableViaUI()` in `src/jxa.ts` on Creator Studio: System Events menu-clicks Insert > Table > Basic, then resizes via AppleScript `set row count`/`set column count`. The insertion point is established by clicking into the body with a top-down position scan (a click on a table/image selects it and disables the menu). Synthetic keystrokes are deliberately avoided — secure keyboard entry from ANY app (e.g. a browser password field) silently blocks them, but not mouse/menu clicks. Menu clicks must be two-step (open parent menu, then click child) — direct 3-level submenu clicks silently no-op.
 
 ## Spec-Driven Workflow (OpenSpec)
-- Non-trivial work goes through OpenSpec: `/opsx:propose <name>` -> human review of the artifacts -> `/opsx:apply` -> `/opsx:archive`. One-line fixes and typos do not need a change.
+- **HARD RULE - every multi-step change runs the full OpenSpec cycle: `/opsx:propose <name>` -> human review of the artifacts -> `/opsx:apply` -> `/opsx:archive`.** A change is multi-step when it touches more than one file, adds / renames / removes a tool, alters tool behaviour or output, needs a new JXA workaround, or cannot be finished in a single edit. Propose FIRST: never start editing `src/` and back-fill the change afterwards, and never carry a multi-step task straight from chat into code.
+- The only exemptions: typo and comment-only edits, doc-only changes, version bumps, and a genuine one-liner already covered by an existing test. If you are unsure which side of the line the task falls on, it is a change - run `/opsx:propose`.
 - CLI is `openspec` (npm `@fission-ai/openspec`, pinned to 1.11.0 in CI). Artifacts live in `openspec/changes/<name>/{proposal,specs/,design,tasks}.md`; archiving merges deltas into `openspec/specs/` (the living map of behaviour).
 - `openspec/config.yaml` carries the project context and per-artifact rules. It is a POINTER to this file, not a copy - when a rule here changes, update the pointer, do not duplicate the regulation.
 - `.claude/skills/openspec-*/` and `.claude/commands/opsx/*` are generated. `openspec update` overwrites them; never hand-edit. Only `openspec/config.yaml` and `openspec/schemas/` survive an update.
