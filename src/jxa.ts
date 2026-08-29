@@ -4,6 +4,8 @@ import { mkdtemp, rm, copyFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
+// Circular at module level is safe: handle-jxa only touches jxa bindings at call time.
+import { asLiteral } from "./handle-jxa.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -12,7 +14,7 @@ const execFileAsync = promisify(execFile);
 // Prefer Creator Studio when available; fall back to standard names.
 
 const IWORK_APPS = ["Numbers", "Pages", "Keynote"] as const;
-type IWorkApp = (typeof IWORK_APPS)[number];
+export type IWorkApp = (typeof IWORK_APPS)[number];
 
 let resolvedNames: Record<IWorkApp, string> | undefined;
 
@@ -48,10 +50,16 @@ function rewriteAppNames(script: string): string {
   return s;
 }
 
-/** Check if the current machine has Creator Studio iWork apps installed. */
-export function isCreatorStudio(): boolean {
+/** Pure per-app Creator Studio predicate over resolved app names (unit-test seam). */
+export function isCreatorStudioApp(resolved: Record<IWorkApp, string>, app?: IWorkApp): boolean {
+  if (app) return resolved[app] !== app;
+  return IWORK_APPS.some((a) => resolved[a] !== a);
+}
+
+/** Check whether the Creator Studio generation is installed — for one app or any. */
+export function isCreatorStudio(app?: IWorkApp): boolean {
   resolvedNames ??= detectAppNames();
-  return IWORK_APPS.some((app) => resolvedNames![app] !== app);
+  return isCreatorStudioApp(resolvedNames, app);
 }
 
 /** Map from iWork app name to System Events process name. */
@@ -78,9 +86,9 @@ export async function clickMenuItem(
   //   menu item "Super Resolution" of menu "Image" of menu item "Image" of menu "Format" of menu bar 1
   let selector: string;
   if (menuPath.length === 2) {
-    selector = `menu item "${menuPath[1]}" of menu "${menuPath[0]}" of menu bar 1`;
+    selector = `menu item ${asLiteral(menuPath[1])} of menu ${asLiteral(menuPath[0])} of menu bar 1`;
   } else if (menuPath.length === 3) {
-    selector = `menu item "${menuPath[2]}" of menu "${menuPath[1]}" of menu item "${menuPath[1]}" of menu "${menuPath[0]}" of menu bar 1`;
+    selector = `menu item ${asLiteral(menuPath[2])} of menu ${asLiteral(menuPath[1])} of menu item ${asLiteral(menuPath[1])} of menu ${asLiteral(menuPath[0])} of menu bar 1`;
   } else {
     throw new Error("clickMenuItem supports 2 or 3 level menu paths");
   }
@@ -235,7 +243,7 @@ export async function creatorStudioSaveAs(
   );
 
   // Close with saving:"yes" to flush all in-memory changes to the auto-save location
-  await runJXA<void>(
+  await runJXA(
     `
     const app = Application("${resolveAppName(appName)}");
     const doc = app.documents.byName(params.documentName);
@@ -384,16 +392,16 @@ export class OsascriptError extends Error {
   readonly appleScriptErrorCode: number | undefined;
   readonly stderr: string;
 
-  constructor(stderr: string, exitCode: number | null) {
+  constructor(stderr: string, exitCode: number | null, messageAsIs = false) {
     const errorCode = parseErrorCode(stderr);
-    const friendly = errorCode !== undefined ? COMMON_ERRORS[errorCode] : undefined;
+    const friendly = messageAsIs ? stderr : errorCode !== undefined ? COMMON_ERRORS[errorCode] : undefined;
     const message = friendly
       ? `${friendly}\n\nosascript stderr: ${stderr}`
       : `osascript failed (exit ${exitCode}): ${stderr}`;
 
     super(message);
     this.name = "OsascriptError";
-    this.appleScriptErrorCode = errorCode;
+    this.appleScriptErrorCode = messageAsIs ? undefined : errorCode;
     this.stderr = stderr;
   }
 }
@@ -452,6 +460,11 @@ function run(argv) {
       }
 
       if (error) {
+        // execFile killed osascript on timeout: report it readable, never retry (hang minimum).
+        if (error.killed || (error as NodeJS.ErrnoException & { signal?: string }).signal === "SIGTERM") {
+          reject(new OsascriptError(`${label} timed out after ${timeout} ms (hung)`, null, true));
+          return;
+        }
         const exitCode = typeof error.code === "number" ? error.code : null;
         reject(new OsascriptError(stderr || error.message, exitCode));
         return;
