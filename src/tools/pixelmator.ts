@@ -148,29 +148,66 @@ const PAS_HELPERS = `
 
 /** Run AppleScript (Aeroflot pixelmator_ops phrasings) and convert a list result to JS. */
 async function runASJXA(src: string, timeout: number): Promise<unknown> {
-  const raw = await runJXA(
+  // runJXA already parses the osascript stdout JSON (JSON string of descToJS
+  // output) with a raw-string fallback; parsing it a second time would only
+  // mangle it (String(array) drops brackets/quotes).
+  return runJXA(
     `${PAS_HELPERS}\nreturn JSON.stringify(descToJS(runAS(${JSON.stringify(src)})));`,
     undefined,
     { timeout },
   );
-  return JSON.parse(String(raw)) as unknown;
+}
+
+const DOC_EXT = /\.(png|jpeg|jpg|tiff|heic|webp|gif|bmp|pxd|psd)$/i;
+
+/** Fast document list via plain JXA object specifiers (immune to the open-reply stall). */
+async function listDocNames(): Promise<string[]> {
+  const parsed: unknown = await runJXA(
+    `return JSON.stringify(Application("${APP}").documents().map(d => d.name()));`,
+    undefined,
+    { timeout: 10_000 },
+  );
+  const list = Array.isArray(parsed) ? parsed : JSON.parse(String(parsed)) as unknown[];
+  return list.filter((n): n is string => typeof n === "string");
 }
 
 /**
- * Run a document-targeting script with the design-D2 autosave retry: on a
- * not-found (-1728) failure, retry once with the .pxd-suffixed name (Pixelmator
- * autosave flips document names between "X" and "X.pxd").
+ * Resolve a possibly-stale document name against the live document list.
+ * Pixelmator autosave drifts names ("X.png" becomes "X", a duplicate open of
+ * the same file becomes "X 2", autosaved copies become "X.pxd"), so a name
+ * captured at open time can be stale by the next call. Exact match wins,
+ * then the .pxd variant, then a stem match after stripping extension and
+ * " N" duplicate suffixes.
+ */
+async function resolveDocName(target: string): Promise<string> {
+  const list = await listDocNames();
+  if (list.includes(target)) return target;
+  const stem = target.replace(DOC_EXT, "").replace(/ \d+$/, "");
+  const pxd = list.find((n) => n === `${stem}.pxd`);
+  if (pxd) return pxd;
+  return list.find((n) => n.replace(DOC_EXT, "").replace(/ \d+$/, "") === stem) ?? target;
+}
+
+/**
+ * Run a document-targeting script with name resolution and the design-D2
+ * autosave retry: on a not-found failure, re-resolve the name once (Pixelmator
+ * renames documents behind our back) and retry; then try the .pxd-suffixed name.
  */
 async function runDocAS(build: (docLiteral: string) => string, documentName: string, timeout: number): Promise<unknown> {
+  const resolved = await resolveDocName(documentName);
   try {
-    return await runASJXA(build(asl(documentName)), timeout);
+    return await runASJXA(build(asl(resolved)), timeout);
   } catch (err) {
     const msg = String(err);
-    if (!msg.includes("-1728") && !msg.toLowerCase().includes("not found")) throw err;
-    const stem = documentName.replace(/\.(png|jpeg|jpg|tiff|heic|webp|gif|bmp|pxd|psd)$/i, "");
-    const alt = stem + ".pxd";
-    if (alt !== documentName) return runASJXA(build(asl(alt)), timeout);
-    return runASJXA(build(asl(stem)), timeout);
+    if (!/can.t get document|-1728|not found/i.test(msg)) throw err;
+    const again = await resolveDocName(resolved);
+    if (again !== resolved) {
+      try {
+        return await runASJXA(build(asl(again)), timeout);
+      } catch { /* fall through to the .pxd retry */ }
+    }
+    const alt = resolved.replace(DOC_EXT, "") + ".pxd";
+    return runASJXA(build(asl(alt)), timeout);
   }
 }
 
@@ -199,17 +236,35 @@ export function registerPixelmatorTools(server: McpServer): void {
       mkdirSync(workDir, { recursive: true });
       const copyPath = join(workDir, `${hash.slice(0, 12)}-${basename(filePath)}`);
       copyFileSync(filePath, copyPath);
-      const stem = basename(copyPath);
-      const src = `tell application "${APP}"
-        open POSIX file ${asl(copyPath)}
-        repeat 10 times
-          delay 0.5
-          if name of document 1 contains ${asl(stem)} then exit repeat
-        end repeat
-        set d to document 1
+      const stemNoExt = `${hash.slice(0, 12)}-${basename(filePath)}`.replace(/\.[^.]+$/, "");
+      // Pixelmator Pro's `open` Apple event may never send its reply (the
+      // document still loads, but the sender hangs until the AE timeout —
+      // observed on a healthy, freshly launched app). Dispatch the open
+      // inside a bounded `with timeout` (its -1712 is expected and ignored),
+      // then poll the fast document list until the copy shows up.
+      const dispatchAS = `with timeout of 10 seconds
+tell application "${APP}" to open POSIX file ${asl(copyPath)}
+end timeout`;
+      await runJXA(
+        `${PAS_HELPERS}\ntry { runAS(${JSON.stringify(dispatchAS)}); } catch (e) {}\nreturn "dispatched";`,
+        undefined,
+        { timeout: 20_000 },
+      );
+      const deadline = Date.now() + 60_000;
+      let docName = "";
+      while (Date.now() < deadline) {
+        const names = await listDocNames();
+        const found = names.find((n) => n.includes(stemNoExt));
+        if (found !== undefined) { docName = found; break; }
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+      if (!docName) {
+        throw new Error(`Pixelmator Pro did not open the document within 60 s (copy: ${copyPath}). Is the macOS session window-capable?`);
+      }
+      const out = await runASJXA(`tell application "${APP}"
+        set d to document ${asl(docName)}
         return {name of d, width of d, height of d, (id of d) as text}
-      end tell`;
-      const out = await runASJXA(src, TIMEOUT_CREATE) as [string, number, number, string];
+      end tell`, 30_000) as [string, number, number, string];
       return JSON.stringify({ name: out[0], width: out[1], height: out[2], id: out[3], sha256: hash, copyPath, source: filePath });
     }),
   );
@@ -415,8 +470,7 @@ export function registerPixelmatorTools(server: McpServer): void {
     async (args) => handleJXA(async () => {
       requireApp();
       const src = (d: string) => `tell application "${APP}"
-        set c to pick color document ${d} at {${args.x},${args.y}}
-        return {(red of c) as integer, (green of c) as integer, (blue of c) as integer, (alpha of c) as integer}
+        return pick color document ${d} at {${args.x},${args.y}}
       end tell`;
       const [r16, g16, b16, a16] = await runDocAS(src, args.documentName, 30_000) as number[];
       const rgb8 = { r: Math.round(r16 / 257), g: Math.round(g16 / 257), b: Math.round(b16 / 257) };
@@ -453,16 +507,21 @@ export function registerPixelmatorTools(server: McpServer): void {
       if (mode === "style") {
         await runDocAS((d) => `tell application "${APP}" to tell document ${d}\nset fill color of styles of ${layer} to {${r16},${g16},${b16}}\nreturn "styled"\nend tell`, args.documentName, TIMEOUT_CREATE);
       } else {
+        if (typeof args.opacity === "number") {
+          throw new Error("Pixelmator Pro's fill verb does not support opacity; adjust the layer opacity instead.");
+        }
         const preserve = args.preserveTransparency === false ? "no" : "yes";
-        const op = typeof args.opacity === "number" ? ` opacity ${args.opacity}` : "";
-        await runDocAS((d) => `tell application "${APP}" to tell document ${d}\nfill ${layer} with color {${r16},${g16},${b16}} preserve transparency ${preserve}${op}\nreturn "filled"\nend tell`, args.documentName, TIMEOUT_CREATE);
+        // The dictionary's fill verb takes the document as its direct
+        // parameter ("Fill the current layer or selected area with a color").
+        await runDocAS((d) => `tell application "${APP}" to fill document ${d} with color {${r16},${g16},${b16}} preserve transparency ${preserve}\nreturn "filled"`, args.documentName, TIMEOUT_CREATE);
       }
       const centerSrc = (doc: string) => `tell application "${APP}" to tell document ${doc}\nreturn {width, height}\nend tell`;
       const [w, h] = await runDocAS(centerSrc, args.documentName, 30_000) as number[];
       const at = sb
         ? { x: Math.round((sb[0] + sb[2]) / 2), y: Math.round((sb[1] + sb[3]) / 2) }
         : { x: Math.round(w / 2), y: Math.round(h / 2) };
-      const pickSrc = (doc: string) => `tell application "${APP}"\nset c to pick color document ${doc} at {${at.x},${at.y}}\nreturn {(red of c) as integer, (green of c) as integer, (blue of c) as integer}\nend tell`;
+      // pick color returns a plain list {R, G, B, alpha} of 16-bit ints.
+      const pickSrc = (doc: string) => `tell application "${APP}"\nreturn pick color document ${doc} at {${at.x},${at.y}}\nend tell`;
       const [pr, pg, pb] = await runDocAS(pickSrc, args.documentName, 30_000) as number[];
       const measured = { r: Math.round(pr / 257), g: Math.round(pg / 257), b: Math.round(pb / 257) };
       const distance = args.metric === "rgb-euclid" ? rgbEuclid(rgb8, measured) : deltaE2000(rgb8, measured);
@@ -525,8 +584,15 @@ export function registerPixelmatorTools(server: McpServer): void {
     ANNOTATIONS.readWrite,
     async (args) => handleJXA(async () => {
       requireApp();
-      const newLayer = await runDocAS((doc) => `tell application "${APP}" to tell document ${doc}\nduplicate current layer\nreturn name of layer 1\nend tell`, args.documentName, TIMEOUT_CREATE);
-      return JSON.stringify({ duplicated: true, newLayer });
+      // duplicate requires an element specifier ("layer N"), not the
+      // current-layer property ("The specified object is a property, not an
+      // element"), so resolve the current layer's index first.
+      const newName = await runDocAS((doc) => `tell application "${APP}" to tell document ${doc}
+set li to index of current layer
+duplicate layer li to end of layers
+return name of layer (count of layers)
+end tell`, args.documentName, TIMEOUT_CREATE);
+      return JSON.stringify({ duplicated: true, newLayer: newName });
     }),
   );
 
@@ -549,9 +615,13 @@ export function registerPixelmatorTools(server: McpServer): void {
     ANNOTATIONS.destructive,
     async (args) => handleJXA(async () => {
       requireApp();
-      const layer = typeof args.layerNumber === "number" ? `layer ${args.layerNumber}` : "current layer";
-      await runDocAS((doc) => `tell application "${APP}" to delete ${layer} of document ${doc}`, args.documentName, TIMEOUT_CREATE);
-      return JSON.stringify({ deleted: true, layer });
+      // Element specifier required: resolve "current layer" to its index
+      // (same property-vs-element quirk as duplicate).
+      const layer = typeof args.layerNumber === "number"
+        ? `layer ${args.layerNumber}`
+        : `layer (index of current layer)`;
+      await runDocAS((doc) => `tell application "${APP}" to tell document ${doc}\ndelete ${layer}\nend tell`, args.documentName, TIMEOUT_CREATE);
+      return JSON.stringify({ deleted: true, layer: args.layerNumber ?? "current layer" });
     }),
   );
 
