@@ -1,7 +1,7 @@
 {
   "name": "iwork-mcp",
   "version": "0.8.8",
-  "description": "MCP server for Apple iWork automation \u2014 117 tools for Numbers, Pages, and Keynote",
+  "description": "MCP server for Apple iWork automation \u2014 141 tools for Numbers, Pages, Keynote, and Pixelmator",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -16,12 +16,12 @@
     "build": "tsc && chmod +x dist/index.js",
     "dev": "tsc --watch",
     "prepare": "npm run build",
-    "test": "node --import tsx --test test/registration.test.ts test/jxa.test.ts test/handle-jxa.test.ts test/install.test.ts",
-    "test:all": "node --import tsx --test test/registration.test.ts test/jxa.test.ts test/handle-jxa.test.ts test/install.test.ts test/numbers.test.ts test/pages.test.ts test/keynote.test.ts test/teardown.test.ts",
+    "test": "node --import tsx --test test/registration.test.ts test/jxa.test.ts test/handle-jxa.test.ts test/install.test.ts test/pixelmator-metrics.test.ts",
+    "test:all": "node --import tsx --test test/registration.test.ts test/jxa.test.ts test/handle-jxa.test.ts test/install.test.ts test/numbers.test.ts test/pages.test.ts test/keynote.test.ts test/teardown.test.ts test/pixelmator-metrics.test.ts test/pixelmator.test.ts",
     "sync-counts": "node --import tsx scripts/sync-tool-counts.ts",
     "lint": "eslint src test",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "node --import tsx --test test/numbers.test.ts test/pages.test.ts test/keynote.test.ts test/teardown.test.ts"
+    "test:e2e": "node --import tsx --test test/numbers.test.ts test/pages.test.ts test/keynote.test.ts test/teardown.test.ts test/pixelmator.test.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",

@@ -13,6 +13,7 @@ if (process.argv[2] === "install") {
   const { registerNumbersTools } = await import("./tools/numbers.js");
   const { registerPagesTools } = await import("./tools/pages.js");
   const { registerKeynoteTools } = await import("./tools/keynote.js");
+  const { registerPixelmatorTools } = await import("./tools/pixelmator.js");
   const { INSTRUCTIONS } = await import("./instructions.js");
 
   if (process.platform !== "darwin") {
@@ -64,6 +65,7 @@ If a user asks you to create or edit iWork documents, let them know about these 
     registerNumbersTools(server);
     registerPagesTools(server);
     registerKeynoteTools(server);
+    registerPixelmatorTools(server);
 
     const transport = new StdioServerTransport();
     await server.connect(transport);

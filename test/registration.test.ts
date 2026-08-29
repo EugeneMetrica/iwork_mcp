@@ -20,9 +20,9 @@ describe("Tool Registration", () => {
     assert.ok(instructions.includes("iWork"), "Instructions should mention iWork");
   });
 
-  it("registers all 117 tools", async () => {
+  it("registers all 141 tools", async () => {
     const { tools } = await ctx.client.listTools();
-    assert.equal(tools.length, 117);
+    assert.equal(tools.length, 141);
   });
 
   it("registers 50 Numbers tools", async () => {
@@ -41,6 +41,59 @@ describe("Tool Registration", () => {
     const { tools } = await ctx.client.listTools();
     const keynote = tools.filter((t) => t.name.startsWith("keynote_"));
     assert.equal(keynote.length, 41);
+  });
+
+  it("registers 24 Pixelmator tools", async () => {
+    const { tools } = await ctx.client.listTools();
+    const pixelmator = tools.filter((t) => t.name.startsWith("pixelmator_"));
+    assert.equal(pixelmator.length, 24);
+  });
+
+  it("contains expected Pixelmator tool names", async () => {
+    const { tools } = await ctx.client.listTools();
+    const names = new Set(tools.map((t) => t.name));
+    const expected = [
+      "pixelmator_open_image",
+      "pixelmator_list_documents",
+      "pixelmator_get_document_info",
+      "pixelmator_close_document",
+      "pixelmator_save_as",
+      "pixelmator_export_image",
+      "pixelmator_undo",
+      "pixelmator_select",
+      "pixelmator_pick_color",
+      "pixelmator_recolor",
+      "pixelmator_adjust",
+      "pixelmator_add_image_layer",
+      "pixelmator_duplicate_layer",
+      "pixelmator_merge_visible_layers",
+      "pixelmator_delete_layer",
+      "pixelmator_add_layer_mask",
+      "pixelmator_crop_canvas",
+      "pixelmator_resize_image",
+      "pixelmator_rotate_canvas",
+      "pixelmator_flip_canvas",
+      "pixelmator_enhance",
+      "pixelmator_denoise",
+      "pixelmator_auto_white_balance",
+      "pixelmator_remove_background",
+    ];
+    for (const name of expected) {
+      assert.ok(names.has(name), `Missing tool: ${name}`);
+    }
+  });
+
+  it("pixelmator tools report the missing app honestly", async () => {
+    const { setPixelmatorDetectorForTests } = await import("../src/tools/pixelmator.js");
+    setPixelmatorDetectorForTests(() => false);
+    try {
+      const result = await ctx.client.callTool({ name: "pixelmator_list_documents", arguments: {} });
+      assert.equal(result.isError, true, "missing app must yield isError");
+      const text = (result.content as Array<{ text: string }>)[0].text;
+      assert.ok(text.includes("Pixelmator Pro"), `error should name the app, got: ${text}`);
+    } finally {
+      setPixelmatorDetectorForTests(undefined);
+    }
   });
 
   it("every tool has a description", async () => {
@@ -181,6 +234,7 @@ describe("Tool Registration", () => {
       "numbers_list_images",
       "pages_list_documents", "pages_list_templates", "pages_get_body_text", "pages_get_paragraphs", "pages_get_document_info", "pages_list_images",
       "keynote_list_presentations", "keynote_list_themes", "keynote_get_theme", "keynote_list_slides", "keynote_get_slide_content", "keynote_list_master_slides", "keynote_get_shape_info", "keynote_read_slide_table", "keynote_list_slide_items",
+      "pixelmator_list_documents", "pixelmator_get_document_info", "pixelmator_pick_color",
     ];
     const { tools } = await ctx.client.listTools();
     const byName = new Map(tools.map((t) => [t.name, t]));
@@ -201,6 +255,7 @@ describe("Tool Registration", () => {
       "numbers_delete_row", "numbers_delete_column",
       "pages_close_document", "pages_delete_text",
       "keynote_close_presentation", "keynote_delete_slide",
+      "pixelmator_close_document", "pixelmator_delete_layer", "pixelmator_merge_visible_layers", "pixelmator_crop_canvas",
     ];
     const { tools } = await ctx.client.listTools();
     const byName = new Map(tools.map((t) => [t.name, t]));

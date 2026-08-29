@@ -5,7 +5,7 @@
 ## Project Overview
 - MCP server for Apple iWork (Numbers, Pages, Keynote) automation via JXA/osascript
 - TypeScript, ESM, uses `@modelcontextprotocol/sdk` v1.26.0
-- 117 tools total: 50 Numbers, 26 Pages, 41 Keynote (includes 8 Creator Studio AI tools)
+- 141 tools total: 50 Numbers, 26 Pages, 41 Keynote (includes 8 Creator Studio AI tools), 24 Pixelmator
 - npm: `iwork-mcp` | GitHub: `EugeneMetrica/iwork_mcp` (public; `origin` points here, fork of `reichenbach/iwork_mcp`)
 - Requirements: macOS 13+, iWork 14.0+, Node.js 18+
 - Supports both standard iWork and iWork 15.1+ "Creator Studio" app bundles (tested on 15.1.1)
@@ -66,14 +66,14 @@
 - `src/index.ts` — entry point + install routing
 - `src/install.ts` — auto-config for Claude Desktop
 - `src/jxa.ts` — runJXA(), OsascriptError, Creator Studio workarounds
-- `src/tools/{numbers,pages,keynote}.ts` — tool definitions
+- `src/tools/{numbers,pages,keynote,pixelmator}.ts` — tool definitions
 - `src/instructions.ts` — MCP instructions string (design guidance for AI clients)
 - `scripts/create-screenshots.ts` — showcase document builder (budget, resume, pitch)
 - `scripts/create-examples.ts` — example file generator (sample.numbers, sample.pages, sample.key)
 - `.github/workflows/ci.yml` — CI: build + unit tests on push/PR, Node 18 & 22 matrix
 - `test/helpers/{server,app-check}.ts` — test helpers (InMemoryTransport, app detection)
-- `test/{registration,jxa}.test.ts` — fast unit tests (no apps needed)
-- `test/{numbers,pages,keynote}.test.ts` — integration tests (require apps)
+- `test/{registration,jxa,handle-jxa,install,pixelmator-metrics}.test.ts` — fast unit tests (no apps needed)
+- `test/{numbers,pages,keynote,teardown,pixelmator}.test.ts` — e2e tests (require the apps)
 
 ## Testing
 - `npm test` — unit tests (registration + jxa + handle-jxa + install), ~300ms, no apps needed, runs in CI
@@ -82,7 +82,7 @@
 - `npm run lint` / `npm run typecheck` — ESLint (strictTypeChecked) + `tsc --noEmit`; `.githooks/pre-commit` and `.githooks/pre-push` run them (enable once per clone: `git config core.hooksPath .githooks`)
 - Uses `node:test` + `tsx`, in-memory MCP transport (no subprocess)
 - e2e teardown closes only documents the suite created (`iwork-mcp-test-` prefix), exports them to `test/artifacts/`, quits only apps it launched — never close-all (user documents must survive)
-- 135 tests total: 58 unit + 77 e2e
+- 155 tests total: 69 unit + 86 e2e (the pixelmator e2e suite skips itself when the app is not responsive or the session is locked)
 
 ## Build & Publish
 - `npm run build` -> `tsc && chmod +x dist/index.js`
@@ -99,3 +99,4 @@
 - Pages tables are not accessible via JXA (-2763) but ARE via AppleScript: pages_list_tables, pages_read_table, pages_write_table_cells, and pages_resize_table use the NSAppleScript bridge. On Creator Studio 15.x, table creation is broken in both JXA and AppleScript — pages_add_table falls back to a UI-scripting workaround there (see Critical JXA Bugs) which requires Accessibility permission for the host app.
 - Keynote shape fill/border colors are not exposed by JXA. Only opacity, rotation, and text formatting are settable via `keynote_format_shape`.
 - Pages paragraph styles (Title, Heading 1, Body, etc.) are NOT exposed by Apple's scripting dictionary. Only font, size, and color are accessible. No alignment, indent, or line spacing either.
+- Pixelmator Pro automation (pixelmator_* tools, requires Pixelmator Pro 3.8+): operations run as AppleScript through the NSAppleScript-in-JXA bridge (Aeroflot pixelmator_ops phrasings). Opening a document REQUIRES a window-capable session — with the macOS screen locked the serial Apple event queue jams on `open` and every later event to the app times out until the app is restarted. `pixelmator_open_image` always opens a disposable copy (never the original); duplicate resolves the new layer through `layer 1`; colours are 16-bit (8-bit × 257); saving `.pxd` into /tmp is impossible (app sandbox) and rejected at the tool boundary.

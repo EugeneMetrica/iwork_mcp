@@ -72,6 +72,14 @@ describe("Keynote Integration", async () => {
     }) as { json: { layoutSet: boolean }; isError: boolean };
     assert.ok(!isError, "RU layout alias 'Только заголовок' should resolve");
     assert.ok(json.layoutSet);
+    // The Title layout has no body placeholder — restore a body-capable
+    // layout (via its RU alias) so later body tests see a body item.
+    const restore = await call(ctx, "keynote_set_slide_layout", {
+      documentName: docName,
+      slideNumber: 1,
+      masterSlideName: "Заголовок и пункты",
+    }) as { isError: boolean };
+    assert.ok(!restore.isError, "RU layout alias 'Заголовок и пункты' should resolve");
   });
 
   it("lists slides", async () => {
