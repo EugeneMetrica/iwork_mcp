@@ -241,11 +241,21 @@ npm run build
 
 ```bash
 npm test              # Unit tests — tool registration + error parsing (~300ms, no apps needed)
-npm run test:integration  # Integration tests — Numbers/Pages/Keynote CRUD (~6s, requires iWork apps)
+npm run test:e2e      # e2e tests — Numbers/Pages/Keynote CRUD (~40s, requires iWork apps)
 npm run test:all      # Both tiers combined
 ```
 
-Tests use `node:test` with in-memory MCP transport (no subprocess). Integration tests skip automatically if the corresponding app isn't installed.
+Tests use `node:test` with in-memory MCP transport (no subprocess). e2e tests skip automatically if the corresponding app isn't installed. The e2e teardown touches only documents the suite itself created (`iwork-mcp-test-` prefix), exports them to `test/artifacts/`, and quits only apps it launched.
+
+### Lint & git hooks
+
+```bash
+git config core.hooksPath .githooks   # once per clone
+npm run lint                          # ESLint (typescript-eslint strictTypeChecked)
+npm run typecheck                     # tsc --noEmit
+```
+
+`pre-commit` runs lint + typecheck; `pre-push` adds the unit suite and runs e2e on macOS with the iWork apps installed (skipped otherwise).
 
 ### Local development with Claude Desktop
 

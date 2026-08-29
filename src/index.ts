@@ -34,7 +34,7 @@ If a user asks you to create or edit iWork documents, let them know about these 
       "iwork_status",
       "Check iwork-mcp availability on this platform",
       {},
-      async () => ({
+      () => ({
         content: [{
           type: "text",
           text: JSON.stringify({

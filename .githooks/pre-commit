@@ -1,0 +1,4 @@
+#!/bin/sh
+# pre-commit: lint + typecheck. Enabled via: git config core.hooksPath .githooks
+npm run lint || exit 1
+npm run typecheck || exit 1
