@@ -34,6 +34,7 @@
 - **Keynote shapeType**: No JXA API to set shape type programmatically. Parameter removed from `keynote_add_shape`.
 - **Numbers add_row at beginning**: JXA `table.rows.push()` always appends. To insert at beginning, must shift existing cell data down first, then write new data at row 0.
 - **JXA export format strings**: Use `"PDF"` not `"Numbers PDF"`/`"Pages PDF"`/`"Keynote PDF"`. The app-prefixed strings cause -1700 "Can't convert types".
+- **AppleScript string escaping**: osascript does NOT support `""` quote doubling (-2740 "A "" can't go after this """). The only string escapes are `\\` and `\"`; raw CR/LF inside a literal is illegal. Always escape via `asLiteral()` / `AS_LITERAL_JXA_HELPER` from `src/handle-jxa.ts` (backslashes doubled, quotes as `\"`, CR/LF cut) — never hand-roll `.replace(/"/g, '\\"')` chains, and remember values read at JXA runtime (e.g. `doc.name()`) must be escaped by the in-script helper before embedding into AppleScript source.
 - **JXA `table.ranges["B2:C3"]`**: Completely broken — always throws "Invalid index" or "Can't get object". `read_range` manually parses cell refs and iterates cells.
 - **Numbers minimum table size**: `app.Table({columnCount: 1})` throws "Invalid column count (-10000)". Minimum is 2 columns AND 2 rows.
 - **Keynote can't delete all slides**: Can't `app.delete` the only slide — Keynote requires at least 1. Compound tool reuses the auto-generated first slide.
@@ -42,11 +43,12 @@
 - **Creator Studio `app.export()` fails with error 6**: Use `creatorStudioExportPDF()` in `src/jxa.ts` — uses `qlmanage` Quick Look to generate PDF.
 - **Creator Studio document name resolution**: Auto-save renames documents by appending file extensions (e.g. "Untitled 1" -> "Untitled 1.numbers"). `injectDocumentNameResolution()` in `src/jxa.ts` handles this transparently by trying the extended name on lookup failure.
 - **Keynote shape position**: Setting `shape.position = [x, y]` (array format) silently fails — reads back as (0,0). Must use object format: `shape.position = {x: x, y: y}`. Width/height setting works fine with direct assignment.
-- **JXA `indexOf()` on scriptable objects**: `doc.sheets().indexOf(sheet)` returns -1 because JXA object references can't be compared with `===`. Iterate by name instead.
+- **Keynote slide size**: A document created without a theme defaults to 1920×1080; creating WITH a theme locks the deck to that theme's own size (e.g. theme "White" → 1024×768). AppleScript `set slide size of doc` fails with -1728 "Can't get size" (read/write both broken); JXA exposes `doc.width()`/`doc.height()` (readable). Workaround: create a plain document, then apply the theme via `doc.documentTheme = app.themes.byName(name)` — the size stays 1920×1080.
+- **Keynote RU-localized names**: On a Russian-localized Keynote, `themes.byName()` / AppleScript `master slide "..."` resolve localized names (e.g. "Простая белая", "Только заголовок") even though `themes().map(t => t.name())` reports English names. A theme spec obtained by a RU name fails when passed into `app.Document({documentTheme})` (-1728) — apply themes by assignment after creation instead. Use `resolveNameCandidates()` from `src/handle-jxa.ts` (normName NFC/NBSP/— + RU↔EN alias pairs) and try candidates in order.- **JXA `indexOf()` on scriptable objects**: `doc.sheets().indexOf(sheet)` returns -1 because JXA object references can't be compared with `===`. Iterate by name instead.
 - **Pages tables inaccessible via JXA**: `doc.tables()` throws -2763 "Don't know how to create TMAScriptTableInfoProxy" — but the AppleScript dictionary exposes them fully. The four pages table tools (list/read/write_cells/resize) use the NSAppleScript bridge, same as Keynote master-slide ops. Cell writes with strings starting "=" set formulas; `set row count` grows/shrinks tables. CAVEAT: table CREATION (`make new table`) is broken on Creator Studio 15.x in BOTH JXA and AppleScript (-2763); on 15.x `pages_add_table` falls back to the UI-scripting workaround (see the "Pages 15.x table creation broken" bullet).
 - **Keynote text colors**: Use 0-1 float range (like Pages), NOT 0-65535 int range (like Numbers). `paragraph.color = [r/255, g/255, b/255]`.
 - **Numbers auto-parses formatted strings**: Writing `"$1,234.56"` to a cell auto-converts to numeric 1234.56. To preserve strings, set `cell.format = "text"` before writing.
-- **Pages 15.x table creation broken**: `doc.tables.push()` AND AppleScript `make new table` both fail with -2763 "TMAScriptTableInfoProxy" (reading/resizing existing tables via AppleScript works). `pages_add_table` falls back to `pagesInsertTableViaUI()` in `src/jxa.ts` on Creator Studio: System Events menu-clicks Insert > Table > Basic, then resizes via AppleScript `set row count`/`set column count`. The insertion point is established by clicking into the body with a top-down position scan (a click on a table/image selects it and disables the menu). Synthetic keystrokes are deliberately avoided — secure keyboard entry from ANY app (e.g. a browser password field) silently blocks them, but not mouse/menu clicks. Menu clicks must be two-step (open parent menu, then click child) — direct 3-level submenu clicks silently no-op.
+- **Pages 15.x table creation broken**: `doc.tables.push()` AND AppleScript `make new table` both fail with -2763 "TMAScriptTableInfoProxy" (reading/resizing existing tables via AppleScript works). `pages_add_table` falls back to `pagesInsertTableViaUI()` in `src/jxa.ts` on Creator Studio: System Events menu-clicks Insert > Table > Basic, then resizes via AppleScript `set row count`/`set column count`. The insertion point is established by clicking into the body with a top-down position scan (a click on a table/image selects it and disables the menu). Synthetic keystrokes are deliberately avoided — secure keyboard entry from ANY app (e.g. a browser password field) silently blocks them, but not mouse/menu clicks. Menu clicks must be two-step (open parent menu, then click child) — direct 3-level submenu clicks silently no-op. **When the macOS session is locked, the synthetic clicks silently no-op and this path fails — UI-scripting tests require an unlocked session.**
 
 ## Spec-Driven Workflow (OpenSpec)
 - **HARD RULE - every multi-step change runs the full OpenSpec cycle: `/opsx:propose <name>` -> human review of the artifacts -> `/opsx:apply` -> `/opsx-review <name>` -> `/opsx:archive`.** A change is multi-step when it touches more than one file, adds / renames / removes a tool, alters tool behaviour or output, needs a new JXA workaround, or cannot be finished in a single edit. Propose FIRST: never start editing `src/` and back-fill the change afterwards, and never carry a multi-step task straight from chat into code.
@@ -74,11 +76,13 @@
 - `test/{numbers,pages,keynote}.test.ts` — integration tests (require apps)
 
 ## Testing
-- `npm test` — unit tests (registration + jxa), ~300ms, no apps needed, runs in CI
-- `npm run test:integration` — CRUD tests for Numbers/Pages/Keynote, ~8s, needs apps
+- `npm test` — unit tests (registration + jxa + handle-jxa + install), ~300ms, no apps needed, runs in CI
+- `npm run test:e2e` — e2e tests for Numbers/Pages/Keynote CRUD (~45s, needs apps; was `test:integration`)
 - `npm run test:all` — both tiers combined
+- `npm run lint` / `npm run typecheck` — ESLint (strictTypeChecked) + `tsc --noEmit`; `.githooks/pre-commit` and `.githooks/pre-push` run them (enable once per clone: `git config core.hooksPath .githooks`)
 - Uses `node:test` + `tsx`, in-memory MCP transport (no subprocess)
-- 102 tests total: 34 unit + 68 integration
+- e2e teardown closes only documents the suite created (`iwork-mcp-test-` prefix), exports them to `test/artifacts/`, quits only apps it launched — never close-all (user documents must survive)
+- 135 tests total: 58 unit + 77 e2e
 
 ## Build & Publish
 - `npm run build` -> `tsc && chmod +x dist/index.js`
