@@ -1,0 +1,76 @@
+schema: spec-driven
+
+# Thin pointer, not a copy of the regulation.
+# Full rules live in AGENTS.md (canonical; CLAUDE.md is the Claude Code entry point).
+context: |
+  iwork-mcp: MCP server automating Apple Numbers / Pages / Keynote through JXA
+  (osascript -l JavaScript) and, where JXA is broken, the NSAppleScript bridge or
+  UI scripting. TypeScript ESM, @modelcontextprotocol/sdk, zod raw shapes,
+  node:test + tsx. Published to npm as `iwork-mcp`; repo reichenbach/iwork_mcp.
+
+  READ BEFORE DESIGNING OR IMPLEMENTING - the JXA quirk list is the project's
+  hard-won knowledge, ignoring it reproduces already-fixed bugs:
+    AGENTS.md, sections "Key Technical Details", "Critical JXA Bugs (FIXED)",
+    "Known Issues", "Build & Publish".
+
+  Hard constraints (CI or the Apple scripting bridge will reject violations):
+    - Tool registration: server.tool(name, description, zodRawShape, annotations,
+      callback) - raw shapes, never z.object(). Callbacks return
+      { content: [{ type: "text", text }] }.
+    - Every new/renamed tool must keep tool counts in sync: `npm run sync-counts`
+      is a CI job and fails the build on drift.
+    - JXA params in via JSON.stringify(argv[0]), results out via JSON.stringify(stdout).
+    - Colors: Numbers 0-65535 ints, Pages/Keynote 0-1 floats. Fonts: PostScript names only.
+    - Both app generations must work: standard iWork and Creator Studio 15.x
+      (app-name rewrite, save/export and document-name workarounds live in src/jxa.ts).
+    - Node >= 18, ESM only, no new runtime dependency without an explicit decision.
+    - Never `git push --tags`; commits use the repo-local noreply email.
+
+rules:
+  proposal:
+    - >-
+      State which apps are affected (Numbers / Pages / Keynote) and whether the change
+      adds, renames or removes MCP tools - tool count changes are user-visible API changes.
+    - >-
+      Include a "Non-goals" section; keep the proposal under 500 words.
+    - >-
+      Say explicitly whether the behaviour must be verified on Creator Studio 15.x as well
+      as standard iWork, or why one generation is out of scope.
+  specs:
+    - >-
+      Requirements use SHALL / MUST; every requirement carries at least one
+      "#### Scenario:" heading written as Given / When / Then.
+    - >-
+      Write scenarios at the MCP boundary - tool name, arguments, and the expected
+      content[].text or isError result - not in terms of JXA internals.
+    - >-
+      Cover the failure path: add a scenario for the error surfaced to the MCP client
+      (OsascriptError message) whenever the Apple bridge can realistically fail.
+  design:
+    - >-
+      Name the execution bridge and justify it: plain JXA by default, NSAppleScript only
+      where JXA is documented broken, UI scripting only as a last resort (it needs
+      Accessibility permission - say so).
+    - >-
+      Check the change against "Critical JXA Bugs (FIXED)" in AGENTS.md and state which
+      known quirks apply; any new workaround must be appended to that list.
+    - >-
+      Specify the tool signature: zod raw shape, annotations (readOnlyHint /
+      destructiveHint / idempotentHint), and the shape of the text result.
+    - >-
+      Say what changes in src/instructions.ts and README.md when the tool surface moves.
+  tasks:
+    - >-
+      Test first, for real: add the case to test/registration.test.ts (and the matching
+      test/{numbers,pages,keynote}.test.ts integration test), run it, capture the actual
+      RED failure, and only then write the implementation. A test that is green before the
+      code exists is a broken test - stop and fix the test.
+    - >-
+      Integration tests drive the real apps; note in the task when a task can only be
+      verified on a machine with iWork installed (CI runs `npm test` only).
+    - >-
+      Gate before archive: `npm run build && npm test && npm run sync-counts` must pass,
+      and `git diff --exit-code` must be clean after sync-counts.
+    - >-
+      Do not bump the version, `npm publish`, or create tags inside a change - release is
+      a separate, manually approved step (see AGENTS.md "Build & Publish").

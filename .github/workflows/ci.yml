@@ -27,3 +27,23 @@ jobs:
 
       - name: Check tool counts in sync
         run: npm run sync-counts
+
+  # Structure gate for OpenSpec change artifacts (see AGENTS.md "Spec-Driven Workflow").
+  # Validates markdown structure only — it never builds or tests the project.
+  spec-validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: openspec validate
+        run: |
+          if [ -n "$(ls -A openspec/changes 2>/dev/null)" ]; then
+            npx -y @fission-ai/openspec@1.11.0 validate --all --strict
+          else
+            echo "No active changes — skipping."
+          fi
