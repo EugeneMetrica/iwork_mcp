@@ -20,9 +20,10 @@ function countTools(file: string): number {
 const numbers = countTools("src/tools/numbers.ts");
 const pages = countTools("src/tools/pages.ts");
 const keynote = countTools("src/tools/keynote.ts");
-const total = numbers + pages + keynote;
+const pixelmator = countTools("src/tools/pixelmator.ts");
+const total = numbers + pages + keynote + pixelmator;
 
-console.log(`Tool counts: ${total} total (${numbers} Numbers, ${pages} Pages, ${keynote} Keynote)`);
+console.log(`Tool counts: ${total} total (${numbers} Numbers, ${pages} Pages, ${keynote} Keynote, ${pixelmator} Pixelmator)`);
 
 type Replacement = {
   file: string;
@@ -38,14 +39,14 @@ const replacements: Replacement[] = [
   // package.json description
   {
     file: "package.json",
-    search: /\d+ tools for Numbers, Pages, and Keynote/,
-    replace: `${total} tools for Numbers, Pages, and Keynote`,
+    search: /\d+ tools for Numbers, Pages, Keynote, and Pixelmator/,
+    replace: `${total} tools for Numbers, Pages, Keynote, and Pixelmator`,
   },
   // README.md header line
   {
     file: "README.md",
-    search: /\d+ tools for Numbers, Pages, and Keynote/,
-    replace: `${total} tools for Numbers, Pages, and Keynote`,
+    search: /\d+ tools for Numbers, Pages, Keynote, and Pixelmator/,
+    replace: `${total} tools for Numbers, Pages, Keynote, and Pixelmator`,
   },
   // README.md section headers
   {
@@ -62,6 +63,11 @@ const replacements: Replacement[] = [
     file: "README.md",
     search: /### Keynote \(\d+ tools\)/,
     replace: `### Keynote (${keynote} tools)`,
+  },
+  {
+    file: "README.md",
+    search: /### Pixelmator \(\d+ tools\)/,
+    replace: `### Pixelmator (${pixelmator} tools)`,
   },
   // registration.test.ts assertions
   {
@@ -104,17 +110,27 @@ const replacements: Replacement[] = [
     search: /(assert\.equal\(keynote\.length,) \d+\)/,
     replace: `$1 ${keynote})`,
   },
+  {
+    file: "test/registration.test.ts",
+    search: /registers \d+ Pixelmator tools/,
+    replace: `registers ${pixelmator} Pixelmator tools`,
+  },
+  {
+    file: "test/registration.test.ts",
+    search: /(assert\.equal\(pixelmator\.length,) \d+\)/,
+    replace: `$1 ${pixelmator})`,
+  },
   // src/install.ts success message
   {
     file: "src/install.ts",
-    search: /\d+ tools for Numbers, Pages, and Keynote/,
-    replace: `${total} tools for Numbers, Pages, and Keynote`,
+    search: /\d+ tools for Numbers, Pages, Keynote, and Pixelmator/,
+    replace: `${total} tools for Numbers, Pages, Keynote, and Pixelmator`,
   },
   // MEMORY.md (absolute path, outside repo)
   {
     file: memoryPath,
-    search: /\d+ tools total: \d+ Numbers, \d+ Pages, \d+ Keynote/,
-    replace: `${total} tools total: ${numbers} Numbers, ${pages} Pages, ${keynote} Keynote`,
+    search: /\d+ tools total: \d+ Numbers, \d+ Pages, \d+ Keynote(, \d+ Pixelmator)?/,
+    replace: `${total} tools total: ${numbers} Numbers, ${pages} Pages, ${keynote} Keynote, ${pixelmator} Pixelmator`,
   },
 ];
 

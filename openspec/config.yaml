@@ -61,6 +61,12 @@ rules:
       Say what changes in src/instructions.ts and README.md when the tool surface moves.
   tasks:
     - >-
+      The LAST task of every change is the review gate, written as a real checkbox:
+      run `/opsx-review <change>` and get verdict PASS or PASS_WITH_NOTES. The opsx cycle
+      has no code review of its own - `/opsx:apply` only ticks checkboxes and `/opsx:archive`
+      merges deltas into openspec/specs/ without checking anything. On FAIL, archiving is
+      forbidden: fix the blocking issues and re-run the review.
+    - >-
       Test first, for real: add the case to test/registration.test.ts (and the matching
       test/{numbers,pages,keynote}.test.ts integration test), run it, capture the actual
       RED failure, and only then write the implementation. A test that is green before the

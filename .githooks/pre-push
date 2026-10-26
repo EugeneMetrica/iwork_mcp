@@ -1,0 +1,13 @@
+#!/bin/sh
+# pre-push: lint + typecheck + unit; e2e only on a Mac with the iWork apps.
+# Enabled via: git config core.hooksPath .githooks
+npm run lint || exit 1
+npm run typecheck || exit 1
+npm test || exit 1
+
+if [ "$(uname)" = "Darwin" ] && { [ -d "/Applications/Numbers.app" ] || [ -d "/Applications/Pages.app" ] || [ -d "/Applications/Keynote.app" ]; }; then
+  echo "pre-push: running e2e suite (macOS with iWork apps)..."
+  npm run test:e2e || exit 1
+else
+  echo "pre-push: skipping e2e — not macOS or no iWork apps"
+fi

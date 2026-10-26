@@ -1,37 +1,8 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { runJXA, OsascriptError, isCreatorStudio, creatorStudioSaveAs, creatorStudioExportPDF, clickMenuItem, resolveAppName, pagesInsertTableViaUI } from "../jxa.js";
+import { runJXA, isCreatorStudio, creatorStudioSaveAs, creatorStudioExportPDF, clickMenuItem, resolveAppName, pagesInsertTableViaUI } from "../jxa.js";
 import { ANNOTATIONS } from "../annotations.js";
-
-function toolResult(text: string, isError = false) {
-  return { content: [{ type: "text" as const, text }], isError };
-}
-
-async function handleJXA<T>(fn: () => Promise<T>): Promise<{ content: { type: "text"; text: string }[]; isError?: boolean }> {
-  try {
-    const result = await fn();
-    const text = typeof result === "string" ? result : JSON.stringify(result, null, 2);
-    return toolResult(text);
-  } catch (err) {
-    // Creator Studio auto-save can rename documents mid-operation, causing transient -1728.
-    // Retry once so the document name resolution injection picks up the new name.
-    if (err instanceof OsascriptError && err.appleScriptErrorCode === -1728 && isCreatorStudio()) {
-      await new Promise(r => setTimeout(r, 500));
-      try {
-        const result = await fn();
-        const text = typeof result === "string" ? result : JSON.stringify(result, null, 2);
-        return toolResult(text);
-      } catch (retryErr) {
-        if (retryErr instanceof OsascriptError) return toolResult(retryErr.message, true);
-        return toolResult(String(retryErr), true);
-      }
-    }
-    if (err instanceof OsascriptError) {
-      return toolResult(err.message, true);
-    }
-    return toolResult(String(err), true);
-  }
-}
+import { handleJXA, toolResult, AS_LITERAL_JXA_HELPER, TIMEOUT_CREATE, TIMEOUT_EXPORT } from "../handle-jxa.js";
 
 export function registerPagesTools(server: McpServer): void {
   // ── Document Management ──
@@ -77,7 +48,7 @@ export function registerPagesTools(server: McpServer): void {
         app.documents.push(doc);
       }
       return JSON.stringify({ name: doc.name() });
-    `, { templateName: templateName ?? null })),
+    `, { templateName: templateName ?? null }, { timeout: TIMEOUT_CREATE })),
   );
 
   server.tool(
@@ -91,7 +62,7 @@ export function registerPagesTools(server: McpServer): void {
       const app = Application("Pages");
       const doc = app.open(Path(params.filePath));
       return JSON.stringify({ name: doc.name() });
-    `, { filePath })),
+    `, { filePath }, { timeout: TIMEOUT_CREATE })),
   );
 
   server.tool(
@@ -103,12 +74,12 @@ export function registerPagesTools(server: McpServer): void {
     },
     ANNOTATIONS.readWrite,
     async ({ documentName, filePath }) => handleJXA(async () => {
-      if (isCreatorStudio()) {
+      if (isCreatorStudio("Pages")) {
         if (filePath) {
           const newName = await creatorStudioSaveAs("Pages", documentName, filePath);
           return JSON.stringify({ saved: true, name: newName });
         }
-        return JSON.stringify({ saved: true, name: documentName });
+        throw new Error("Creator Studio requires an absolute filePath for pages_save_document — in-place save is unavailable. Re-run with filePath.");
       }
       return runJXA<string>(`
       const app = Application("Pages");
@@ -136,7 +107,7 @@ export function registerPagesTools(server: McpServer): void {
     },
     ANNOTATIONS.readWrite,
     async ({ documentName, filePath, format }) => handleJXA(async () => {
-      if (isCreatorStudio() && format === "PDF") {
+      if (isCreatorStudio("Pages") && format === "PDF") {
         await creatorStudioExportPDF("Pages", documentName, filePath);
         return JSON.stringify({ exported: true, path: filePath, format: "PDF" });
       }
@@ -152,7 +123,7 @@ export function registerPagesTools(server: McpServer): void {
       const fmt = formatMap[params.format];
       app.export(doc, { to: Path(params.filePath), as: fmt });
       return JSON.stringify({ exported: true, path: params.filePath, format: params.format });
-    `, { documentName, filePath, format });
+    `, { documentName, filePath, format }, { timeout: TIMEOUT_EXPORT });
     }),
   );
 
@@ -545,9 +516,8 @@ export function registerPagesTools(server: McpServer): void {
       const s = d.stringValue;
       return (s && !s.isNil()) ? s.js : null;
     }
-    function asQuote(s) {
-      return '"' + String(s).replace(/\\\\/g, "\\\\\\\\").replace(/"/g, '\\\\"').replace(/\\n/g, "\\\\n").replace(/\\r/g, "\\\\r").replace(/\\t/g, "\\\\t") + '"';
-    }
+    ${AS_LITERAL_JXA_HELPER}
+    function asQuote(s) { return asLiteral(s); }
     function asValue(v) {
       if (v === null || v === undefined) return '""';
       if (typeof v === "number") return String(v);
@@ -806,7 +776,7 @@ export function registerPagesTools(server: McpServer): void {
     `, {
       paragraphs,
       filePath: filePath ?? null,
-    })),
+    }, { timeout: TIMEOUT_CREATE })),
   );
 
   // ── Creator Studio Features (require subscription) ──
@@ -820,11 +790,11 @@ export function registerPagesTools(server: McpServer): void {
     },
     ANNOTATIONS.readWrite,
     async ({ documentName, imageIndex }) => {
-      if (!isCreatorStudio()) {
+      if (!isCreatorStudio("Pages")) {
         return toolResult("Super Resolution requires Apple Creator Studio (iWork 15.1+).", true);
       }
       return handleJXA(async () => {
-        await runJXA<void>(`
+        await runJXA(`
           const app = Application("Pages");
           app.activate();
           const doc = app.documents.byName(params.documentName);
@@ -836,7 +806,7 @@ export function registerPagesTools(server: McpServer): void {
 
         await clickMenuItem("Pages", ["Format", "Image", "Super Resolution"], { postdelay: 2 });
 
-        return JSON.stringify({ success: true, message: "Super Resolution started on image " + imageIndex + "." });
+        return JSON.stringify({ success: true, message: "Super Resolution started on image " + String(imageIndex) + "." });
       });
     },
   );
@@ -850,11 +820,11 @@ export function registerPagesTools(server: McpServer): void {
     },
     ANNOTATIONS.readWrite,
     async ({ documentName, imageIndex }) => {
-      if (!isCreatorStudio()) {
+      if (!isCreatorStudio("Pages")) {
         return toolResult("Remove Background requires Apple Creator Studio (iWork 15.1+).", true);
       }
       return handleJXA(async () => {
-        await runJXA<void>(`
+        await runJXA(`
           const app = Application("Pages");
           app.activate();
           const doc = app.documents.byName(params.documentName);
@@ -866,7 +836,7 @@ export function registerPagesTools(server: McpServer): void {
 
         await clickMenuItem("Pages", ["Format", "Image", "Remove Background"], { postdelay: 2 });
 
-        return JSON.stringify({ success: true, message: "Background removal started on image " + imageIndex + "." });
+        return JSON.stringify({ success: true, message: "Background removal started on image " + String(imageIndex) + "." });
       });
     },
   );
