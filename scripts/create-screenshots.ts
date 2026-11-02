@@ -6,7 +6,7 @@
  * Documents stay open for manual screenshotting.
  *
  * Usage:
- *   node --import tsx scripts/create-screenshots.ts [budget|resume|pitch|all]
+ *   bun scripts/create-screenshots.ts [budget|resume|pitch|all]
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";

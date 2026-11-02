@@ -7,7 +7,7 @@
 - TypeScript, ESM, uses `@modelcontextprotocol/sdk` v1.26.0
 - 141 tools total: 50 Numbers, 26 Pages, 41 Keynote (includes 8 Creator Studio AI tools), 24 Pixelmator
 - npm: `iwork-mcp` | GitHub: `EugeneMetrica/iwork_mcp` (public; `origin` points here, fork of `reichenbach/iwork_mcp`)
-- Requirements: macOS 13+, iWork 14.0+, Node.js 18+
+- Requirements: macOS 13+, iWork 14.0+, Bun 1.4+ (dev/test/build); Node.js 18+ only to run the published `npx iwork-mcp` bin
 - Supports both standard iWork and iWork 15.1+ "Creator Studio" app bundles (tested on 15.1.1)
 - **Any multi-step change is spec-driven: start with `/opsx:propose`, never with an edit** - see "Spec-Driven Workflow (OpenSpec)" below.
 
@@ -59,7 +59,7 @@
 - **The opsx cycle has NO code review of its own** - `/opsx:apply` just ticks checkboxes, `/opsx:archive` merges the deltas into `openspec/specs/` without checking anything, and `openspec validate` gates markdown structure only. `/opsx-review <change>` is the gate that closes this: a read-only reviewer (`.claude/skills/opsx-review/`, subagent `sdd-reviewer`, forked context) runs 7 passes over the delta scenarios, the `tasks.md` checkboxes and the real behaviour gates, and returns `PASS` / `PASS_WITH_NOTES` / `FAIL`.
 - **Archiving on a `FAIL` verdict is forbidden.** Archiving writes the delta spec into the living map of behaviour - archiving unreviewed work freezes the defect as the description of the system. Fix the blocking issues, re-run `/opsx-review`, then archive. The reviewer is read-only and never the agent that wrote the code.
 - Testing regulation is the `test-review` skill (`.claude/skills/test-review/`) - the single source of truth for the RED->GREEN->REFACTOR cycle, anti-patterns A1-A9 + `no-red-run`, test-layer choice and severity. It is hand-written, not generated. Do not duplicate it here.
-- OpenSpec gates markdown structure only (`openspec validate --all --strict`, CI job `spec-validate`): it never builds, tests or lints this project. Behaviour gates stay `npm run build && npm test && npm run sync-counts`.
+- OpenSpec gates markdown structure only (`openspec validate --all --strict`, CI job `spec-validate`): it never builds, tests or lints this project. Behaviour gates stay `bun run build && bun run test && bun run sync-counts`.
 - Scenarios in `specs/` are the input to the RED test, not a substitute for it: write the failing test, run it, then implement.
 
 ## File Structure
@@ -70,22 +70,22 @@
 - `src/instructions.ts` — MCP instructions string (design guidance for AI clients)
 - `scripts/create-screenshots.ts` — showcase document builder (budget, resume, pitch)
 - `scripts/create-examples.ts` — example file generator (sample.numbers, sample.pages, sample.key)
-- `.github/workflows/ci.yml` — CI: build + unit tests on push/PR, Node 18 & 22 matrix
+- `.github/workflows/ci.yml` — CI: build + unit tests on push/PR, Bun 1.4 on ubuntu-latest
 - `test/helpers/{server,app-check}.ts` — test helpers (InMemoryTransport, app detection)
 - `test/{registration,jxa,handle-jxa,install,pixelmator-metrics}.test.ts` — fast unit tests (no apps needed)
 - `test/{numbers,pages,keynote,teardown,pixelmator}.test.ts` — e2e tests (require the apps)
 
 ## Testing
-- `npm test` — unit tests (registration + jxa + handle-jxa + install), ~300ms, no apps needed, runs in CI
-- `npm run test:e2e` — e2e tests for Numbers/Pages/Keynote CRUD (~45s, needs apps; was `test:integration`)
-- `npm run test:all` — both tiers combined
-- `npm run lint` / `npm run typecheck` — ESLint (strictTypeChecked) + `tsc --noEmit`; `.githooks/pre-commit` and `.githooks/pre-push` run them (enable once per clone: `git config core.hooksPath .githooks`)
-- Uses `node:test` + `tsx`, in-memory MCP transport (no subprocess)
+- `bun run test` — unit tests (registration + jxa + handle-jxa + install) with coverage, ~400ms, no apps needed, runs in CI
+- `bun run test:e2e` — e2e tests for Numbers/Pages/Keynote/Pixelmator CRUD (~45s, needs apps; was `test:integration`)
+- `bun run test:all` — both tiers combined
+- `bun run lint` / `bun run typecheck` — ESLint (strictTypeChecked) + `tsc --noEmit`; `.githooks/pre-commit` and `.githooks/pre-push` run them (enable once per clone: `git config core.hooksPath .githooks`)
+- Uses `bun test` (files may still import `node:test` / `node:assert/strict`; Bun runs them), in-memory MCP transport (no subprocess)
 - e2e teardown closes only documents the suite created (`iwork-mcp-test-` prefix), exports them to `test/artifacts/`, quits only apps it launched — never close-all (user documents must survive)
 - 155 tests total: 69 unit + 86 e2e (the pixelmator e2e suite skips itself when the app is not responsive or the session is locked)
 
 ## Build & Publish
-- `npm run build` -> `tsc && chmod +x dist/index.js`
+- `bun run build` -> `bun build src/index.ts --outdir dist --target node --format esm` + chmod +x
 - `npm publish` requires 2FA (OTP). User publishes manually.
 - Always bump version before publish (npm rejects duplicates)
 - **Keep version in sync**: bump -> build -> test -> commit -> push -> publish -> GitHub release

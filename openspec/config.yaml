@@ -6,7 +6,8 @@ context: |
   iwork-mcp: MCP server automating Apple Numbers / Pages / Keynote through JXA
   (osascript -l JavaScript) and, where JXA is broken, the NSAppleScript bridge or
   UI scripting. TypeScript ESM, @modelcontextprotocol/sdk, zod raw shapes,
-  node:test + tsx. Published to npm as `iwork-mcp`; repo reichenbach/iwork_mcp.
+  Bun 1.4 (`bun test` / `bun build`). Published to npm as `iwork-mcp`; repo
+  reichenbach/iwork_mcp.
 
   READ BEFORE DESIGNING OR IMPLEMENTING - the JXA quirk list is the project's
   hard-won knowledge, ignoring it reproduces already-fixed bugs:
@@ -17,13 +18,13 @@ context: |
     - Tool registration: server.tool(name, description, zodRawShape, annotations,
       callback) - raw shapes, never z.object(). Callbacks return
       { content: [{ type: "text", text }] }.
-    - Every new/renamed tool must keep tool counts in sync: `npm run sync-counts`
+    - Every new/renamed tool must keep tool counts in sync: `bun run sync-counts`
       is a CI job and fails the build on drift.
     - JXA params in via JSON.stringify(argv[0]), results out via JSON.stringify(stdout).
     - Colors: Numbers 0-65535 ints, Pages/Keynote 0-1 floats. Fonts: PostScript names only.
     - Both app generations must work: standard iWork and Creator Studio 15.x
       (app-name rewrite, save/export and document-name workarounds live in src/jxa.ts).
-    - Node >= 18, ESM only, no new runtime dependency without an explicit decision.
+    - Bun >= 1.4.0 for dev/test/build; published bin remains Node >= 18 (`npx iwork-mcp`). ESM only, no new runtime dependency without an explicit decision.
     - Never `git push --tags`; commits use the repo-local noreply email.
 
 rules:
@@ -73,10 +74,12 @@ rules:
       code exists is a broken test - stop and fix the test.
     - >-
       Integration tests drive the real apps; note in the task when a task can only be
-      verified on a machine with iWork installed (CI runs `npm test` only).
+      verified on a machine with iWork installed (CI runs `bun run test` only).
     - >-
-      Gate before archive: `npm run build && npm test && npm run sync-counts` must pass,
+      Gate before archive: `bun run build && bun run test && bun run sync-counts` must pass,
       and `git diff --exit-code` must be clean after sync-counts.
     - >-
       Do not bump the version, `npm publish`, or create tags inside a change - release is
       a separate, manually approved step (see AGENTS.md "Build & Publish").
+
+# agents-md-sha256: c91d9020c705219d575efd35986ac458069d33ed465412c1886c9ff248ffaa84

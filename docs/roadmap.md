@@ -32,26 +32,13 @@ adjustments, merge видимых, remove background, экспорт PNG/JPEG, s
 
 ## Итерация 3 — Переход рантайма и сборки на Bun 1.4
 
-Цель: Node.js/npm → Bun 1.4 как рантайм и сборщик (см. глобальный стек:
-Bun — целевой JS/TS runtime, skill `bun`).
-
-- `package.json`: engines/`packageManager` на Bun; скрипты — `bun run` вместо
-  node+npx-цепочек; `tsx` и `typescript`-обвязка сборки заменяются
-  `bun build` (tsc остаётся только для `--noEmit`-типизации, если понадобится);
-- тесты: `node:test` → `bun:test` (юнит + e2e), `--test`-глобы → bun-раннер;
-  `tsx`-импорт из тестов уходит;
-- тестовое покрытие: до миграции зафиксировать текущий зелёный baseline
-  (58 unit + 77 e2e), после — не хуже; добавить coverage-гейт
-  (`bun test --coverage`) в pre-push и CI;
-- CI: self-hosted раннеры получают Bun 1.4 (роль `gha-runner`), матрица
-  Node 18/22 заменяется на bun-джобу; GitHub CI остаётся ubuntu;
-- MCP SDK (`@modelcontextprotocol/sdk`) под Bun — проверить совместимость
-  (stdio-транспорт, InMemoryTransport для тестов) до переключения;
-- публикация: `npm publish` с bun-built артефактами, `bin`-шей без изменения
-  контракта `iwork-mcp install`.
-
-Порядок: baseline → bun:test → bun build → CI → publish-проверка. Откат на
-любом шаге — revert package.json/CI (изменения изолированы от src/).
+Статус 2026-08-30: OpenSpec change `migrate-to-bun-1-4` применён.
+Dev/test/build — Bun 1.4 (`bun test` с coverage, `bun build --target node`).
+Published bin остаётся Node-совместимым (`npx iwork-mcp`). CI ubuntu —
+`oven-sh/setup-bun@v2` 1.4.0, без матрицы Node 18/22. Baseline после
+миграции: 69 unit + 85 e2e pass (1 skip: Pages UI-table без AX-окон).
+Файлы тестов по-прежнему импортируют `node:test`; их гоняет `bun test`.
+Откат — revert package.json / bun.lock / CI / hooks.
 
 ## Вне дорожной карты (пока не запланировано)
 

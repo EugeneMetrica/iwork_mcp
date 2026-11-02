@@ -13,15 +13,15 @@
     "screenshots"
   ],
   "scripts": {
-    "build": "tsc && chmod +x dist/index.js",
-    "dev": "tsc --watch",
-    "prepare": "npm run build",
-    "test": "node --import tsx --test test/registration.test.ts test/jxa.test.ts test/handle-jxa.test.ts test/install.test.ts test/pixelmator-metrics.test.ts",
-    "test:all": "node --import tsx --test test/registration.test.ts test/jxa.test.ts test/handle-jxa.test.ts test/install.test.ts test/numbers.test.ts test/pages.test.ts test/keynote.test.ts test/teardown.test.ts test/pixelmator-metrics.test.ts test/pixelmator.test.ts",
-    "sync-counts": "node --import tsx scripts/sync-tool-counts.ts",
+    "build": "bun build src/index.ts --outdir dist --target node --format esm --packages bundle && chmod +x dist/index.js",
+    "dev": "bun --watch src/index.ts",
+    "prepare": "bun run build",
+    "test": "bun test test/registration.test.ts test/jxa.test.ts test/handle-jxa.test.ts test/install.test.ts test/pixelmator-metrics.test.ts --coverage",
+    "test:all": "bun test test/registration.test.ts test/jxa.test.ts test/handle-jxa.test.ts test/install.test.ts test/pixelmator-metrics.test.ts test/numbers.test.ts test/pages.test.ts test/keynote.test.ts test/teardown.test.ts test/pixelmator.test.ts --timeout=180000 --max-concurrency=1",
+    "sync-counts": "bun scripts/sync-tool-counts.ts",
     "lint": "eslint src test",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "node --import tsx --test test/numbers.test.ts test/pages.test.ts test/keynote.test.ts test/teardown.test.ts test/pixelmator.test.ts"
+    "test:e2e": "bun test test/numbers.test.ts test/pages.test.ts test/keynote.test.ts test/teardown.test.ts test/pixelmator.test.ts --timeout=180000 --max-concurrency=1"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
@@ -31,13 +31,14 @@
     "@eslint/js": "^10.0.1",
     "@types/node": "^22",
     "eslint": "^10.9.1",
-    "tsx": "^4.21.0",
     "typescript": "^5.8.0",
     "typescript-eslint": "^8.68.0"
   },
   "engines": {
+    "bun": ">=1.4.0",
     "node": ">=18"
   },
+  "packageManager": "bun@1.4.0",
   "keywords": [
     "mcp",
     "iwork",

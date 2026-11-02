@@ -63,7 +63,8 @@ codex mcp add iwork -- npx -y iwork-mcp
 
 - **macOS 13 Ventura or later** (tested on macOS 14 Sonoma)
 - **Numbers, Pages, and Keynote 14.0+** (tested on 14.5 and 15.1.1 Creator Studio; free from the App Store)
-- [Node.js 18+](https://nodejs.org) (`brew install node` if you have Homebrew)
+- [Node.js 18+](https://nodejs.org) to run the published `npx iwork-mcp` bin (`brew install node` if you have Homebrew)
+- **Dev/test/build:** [Bun 1.4+](https://bun.com) (`bun install` then `bun run test` / `bun run build`)
 - On first use, macOS will ask to grant Automation permission — click OK
 
 > **iWork 15.1+ (Creator Studio)**: Fully supported — tested on 15.1.1 (February 2026). Creator Studio is auto-detected and used when available. Creator Studio subscribers get 8 additional AI tools (Magic Fill, Clean Up Slide, Super Resolution, Remove Background). See [Creator Studio known issues](#creator-studio-known-issues) below for export/save-as limitations.
@@ -252,7 +253,7 @@ The server runs JXA (JavaScript for Automation) scripts via `osascript` to contr
 ```
 Claude Desktop / Claude Code / Codex
   ↓ MCP protocol over stdio
-iwork-mcp server (Node.js)
+iwork-mcp server (Bun 1.4 build, Node-compatible bin)
   ↓ child_process.execFile
 /usr/bin/osascript -l JavaScript
   ↓ JXA scripting bridge
@@ -264,26 +265,26 @@ Numbers.app / Pages.app / Keynote.app
 ```bash
 git clone https://github.com/reichenbach/iwork_mcp.git
 cd iwork-mcp
-npm install
-npm run build
+bun install
+bun run build
 ```
 
 ### Testing
 
 ```bash
-npm test              # Unit tests — tool registration + error parsing (~300ms, no apps needed)
-npm run test:e2e      # e2e tests — Numbers/Pages/Keynote CRUD (~40s, requires iWork apps)
-npm run test:all      # Both tiers combined
+bun run test          # Unit tests — tool registration + error parsing, with coverage (~400ms, no apps needed)
+bun run test:e2e      # e2e tests — Numbers/Pages/Keynote/Pixelmator CRUD (~40s, requires the apps)
+bun run test:all      # Both tiers combined
 ```
 
-Tests use `node:test` with in-memory MCP transport (no subprocess). e2e tests skip automatically if the corresponding app isn't installed. The e2e teardown touches only documents the suite itself created (`iwork-mcp-test-` prefix), exports them to `test/artifacts/`, and quits only apps it launched.
+Tests run under `bun test` with in-memory MCP transport (no subprocess). e2e tests skip automatically if the corresponding app isn't installed. The e2e teardown touches only documents the suite itself created (`iwork-mcp-test-` prefix), exports them to `test/artifacts/`, and quits only apps it launched.
 
 ### Lint & git hooks
 
 ```bash
 git config core.hooksPath .githooks   # once per clone
-npm run lint                          # ESLint (typescript-eslint strictTypeChecked)
-npm run typecheck                     # tsc --noEmit
+bun run lint                          # ESLint (typescript-eslint strictTypeChecked)
+bun run typecheck                     # tsc --noEmit
 ```
 
 `pre-commit` runs lint + typecheck; `pre-push` adds the unit suite and runs e2e on macOS with the iWork apps installed (skipped otherwise).

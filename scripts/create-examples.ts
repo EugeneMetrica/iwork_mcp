@@ -6,7 +6,7 @@
  * Files are saved to the examples/ directory.
  *
  * Usage:
- *   node --import tsx scripts/create-examples.ts
+ *   bun scripts/create-examples.ts
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";

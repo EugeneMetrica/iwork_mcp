@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 /**
  * Counts server.tool( registrations in src/tools/*.ts and updates all locations
  * that reference tool counts. Exit 0 = no changes, exit 1 = files were modified.
