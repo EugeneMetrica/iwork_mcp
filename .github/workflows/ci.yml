@@ -38,7 +38,7 @@ jobs:
 
       - name: openspec validate
         run: |
-          if [ -n "$(ls -A openspec/changes 2>/dev/null)" ]; then
+          if [ -n "$(ls -A openspec/changes 2>/dev/null | grep -v '^archive$')" ]; then
             npx -y @fission-ai/openspec@1.11.0 validate --all --strict
           else
             echo "No active changes — skipping."
