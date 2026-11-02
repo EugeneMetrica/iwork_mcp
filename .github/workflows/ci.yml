@@ -9,24 +9,20 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18, 22]
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: ${{ matrix.node-version }}
-          cache: npm
+          bun-version: 1.4.0
 
-      - run: npm ci
-      - run: npm run build
-      - run: npm test
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - run: bun run test
 
       - name: Check tool counts in sync
-        run: npm run sync-counts
+        run: bun run sync-counts
 
   # Structure gate for OpenSpec change artifacts (see AGENTS.md "Spec-Driven Workflow").
   # Validates markdown structure only — it never builds or tests the project.
@@ -42,7 +38,7 @@ jobs:
 
       - name: openspec validate
         run: |
-          if [ -n "$(ls -A openspec/changes 2>/dev/null)" ]; then
+          if [ -n "$(ls -A openspec/changes 2>/dev/null | grep -v '^archive$')" ]; then
             npx -y @fission-ai/openspec@1.11.0 validate --all --strict
           else
             echo "No active changes — skipping."

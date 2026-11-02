@@ -1,6 +1,6 @@
 # iwork-mcp
 
-MCP server for Apple iWork automation — 117 tools for Numbers, Pages, and Keynote.
+MCP server for Apple iWork automation — 141 tools for Numbers, Pages, Keynote, and Pixelmator.
 
 One line to install. Works with Claude Desktop, Claude Code, Codex, and any MCP client.
 
@@ -63,7 +63,8 @@ codex mcp add iwork -- npx -y iwork-mcp
 
 - **macOS 13 Ventura or later** (tested on macOS 14 Sonoma)
 - **Numbers, Pages, and Keynote 14.0+** (tested on 14.5 and 15.1.1 Creator Studio; free from the App Store)
-- [Node.js 18+](https://nodejs.org) (`brew install node` if you have Homebrew)
+- [Node.js 18+](https://nodejs.org) to run the published `npx iwork-mcp` bin (`brew install node` if you have Homebrew)
+- **Dev/test/build:** [Bun 1.4+](https://bun.com) (`bun install` then `bun run test` / `bun run build`)
 - On first use, macOS will ask to grant Automation permission — click OK
 
 > **iWork 15.1+ (Creator Studio)**: Fully supported — tested on 15.1.1 (February 2026). Creator Studio is auto-detected and used when available. Creator Studio subscribers get 8 additional AI tools (Magic Fill, Clean Up Slide, Super Resolution, Remove Background). See [Creator Studio known issues](#creator-studio-known-issues) below for export/save-as limitations.
@@ -214,6 +215,37 @@ codex mcp add iwork -- npx -y iwork-mcp
 | `keynote_super_resolution` | AI image upscaling — increase resolution while preserving quality (Creator Studio) |
 | `keynote_remove_background` | AI background removal from images (Creator Studio) |
 
+### Pixelmator (24 tools)
+
+Requires [Pixelmator Pro](https://www.pixelmator.com/pro/) 3.8+. Tools are always registered; without the app they return a descriptive error. Covered by the e2e suite (skips when the app is unavailable or the macOS session is locked); e2e documents are exported as PNG artifacts into `test/artifacts/`.
+
+| Tool | Description |
+|---|---|
+| `pixelmator_open_image` | Open an image as a disposable copy (original is never touched; returns sha256 + copy path) |
+| `pixelmator_list_documents` | List open documents |
+| `pixelmator_get_document_info` | Size, resolution, bits per channel, colour profile, layer count |
+| `pixelmator_close_document` | Close a document (saving defaults to no) |
+| `pixelmator_save_as` | Save to a new file (pxd/png/jpeg/tiff/heic/webp/gif/pdf/psd/svg) |
+| `pixelmator_export_image` | Export to png/jpeg/tiff/heic/webp/gif/pdf/psd/bmp, waits for the file |
+| `pixelmator_undo` | Undo N steps |
+| `pixelmator_select` | Selection: all, none, invert, subject, rect, color-range |
+| `pixelmator_pick_color` | Sample a pixel colour (16-bit RGBA, 8-bit RGB, HEX) |
+| `pixelmator_recolor` | Deterministic HEX recolor (style/fill) with measured ΔE-2000 verification |
+| `pixelmator_adjust` | Colour adjustments (saturation, contrast, hue, exposure, …) |
+| `pixelmator_add_image_layer` | Add an image file as a new layer |
+| `pixelmator_duplicate_layer` | Duplicate the current layer |
+| `pixelmator_merge_visible_layers` | Merge visible layers |
+| `pixelmator_delete_layer` | Delete a numbered or current layer |
+| `pixelmator_add_layer_mask` | Add a layer mask (from file, reveal/hide) |
+| `pixelmator_crop_canvas` | Crop to absolute bounds |
+| `pixelmator_resize_image` | Resize with a resampling algorithm |
+| `pixelmator_rotate_canvas` | Rotate left/right/180 |
+| `pixelmator_flip_canvas` | Flip horizontally/vertically |
+| `pixelmator_enhance` | Automatic Enhance |
+| `pixelmator_denoise` | Denoise with intensity |
+| `pixelmator_auto_white_balance` | Automatic white balance |
+| `pixelmator_remove_background` | Remove background |
+
 ## How it works
 
 The server runs JXA (JavaScript for Automation) scripts via `osascript` to control iWork apps. Each tool call is a single `osascript` invocation — parameters go in as JSON via `argv[0]`, results come back as JSON via stdout.
@@ -221,7 +253,7 @@ The server runs JXA (JavaScript for Automation) scripts via `osascript` to contr
 ```
 Claude Desktop / Claude Code / Codex
   ↓ MCP protocol over stdio
-iwork-mcp server (Node.js)
+iwork-mcp server (Bun 1.4 build, Node-compatible bin)
   ↓ child_process.execFile
 /usr/bin/osascript -l JavaScript
   ↓ JXA scripting bridge
@@ -233,19 +265,29 @@ Numbers.app / Pages.app / Keynote.app
 ```bash
 git clone https://github.com/reichenbach/iwork_mcp.git
 cd iwork-mcp
-npm install
-npm run build
+bun install
+bun run build
 ```
 
 ### Testing
 
 ```bash
-npm test              # Unit tests — tool registration + error parsing (~300ms, no apps needed)
-npm run test:integration  # Integration tests — Numbers/Pages/Keynote CRUD (~6s, requires iWork apps)
-npm run test:all      # Both tiers combined
+bun run test          # Unit tests — tool registration + error parsing, with coverage (~400ms, no apps needed)
+bun run test:e2e      # e2e tests — Numbers/Pages/Keynote/Pixelmator CRUD (~40s, requires the apps)
+bun run test:all      # Both tiers combined
 ```
 
-Tests use `node:test` with in-memory MCP transport (no subprocess). Integration tests skip automatically if the corresponding app isn't installed.
+Tests run under `bun test` with in-memory MCP transport (no subprocess). e2e tests skip automatically if the corresponding app isn't installed. The e2e teardown touches only documents the suite itself created (`iwork-mcp-test-` prefix), exports them to `test/artifacts/`, and quits only apps it launched.
+
+### Lint & git hooks
+
+```bash
+git config core.hooksPath .githooks   # once per clone
+bun run lint                          # ESLint (typescript-eslint strictTypeChecked)
+bun run typecheck                     # tsc --noEmit
+```
+
+`pre-commit` runs lint + typecheck; `pre-push` adds the unit suite and runs e2e on macOS with the iWork apps installed (skipped otherwise).
 
 ### Local development with Claude Desktop
 

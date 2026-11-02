@@ -2,7 +2,8 @@ import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { unlinkSync } from "node:fs";
 import { createTestServer, type TestContext } from "./helpers/server.js";
-import { isAppAvailable } from "./helpers/app-check.js";
+import { isAppAvailable, isAppRunning } from "./helpers/app-check.js";
+import { teardownAppDocuments } from "./helpers/teardown.js";
 
 /** Helper: call a tool and return parsed text content. */
 async function call(ctx: TestContext, name: string, args: Record<string, unknown> = {}) {
@@ -14,6 +15,8 @@ async function call(ctx: TestContext, name: string, args: Record<string, unknown
 }
 
 describe("Numbers Integration", async () => {
+  // Must run before isAppAvailable: the availability probe launches the app.
+  const wasRunning = await isAppRunning("Numbers");
   const available = await isAppAvailable("Numbers");
   if (!available) {
     console.log("⏭  Skipping Numbers tests — app not available");
@@ -24,6 +27,7 @@ describe("Numbers Integration", async () => {
   let docName: string;
   const suffix = Date.now();
   const tmpFiles: string[] = [];
+  const tracked = new Set<string>();
 
   before(async () => {
     ctx = await createTestServer();
@@ -31,13 +35,8 @@ describe("Numbers Integration", async () => {
 
   after(async () => {
     if (ctx) {
-      // Close ALL open Numbers documents (catches leaked test docs)
-      try {
-        const { json: docs } = await call(ctx, "numbers_list_documents");
-        for (const doc of docs as Array<{ name: string }>) {
-          try { await call(ctx, "numbers_close_document", { documentName: doc.name, saving: "no" }); } catch {}
-        }
-      } catch {}
+      // Close only documents this suite created (plus any leaked test-prefixed docs)
+      await teardownAppDocuments({ client: ctx.client, app: "Numbers", tracked, wasRunning });
       // Clean up temp files
       for (const f of tmpFiles) {
         try { unlinkSync(f); } catch {}
@@ -49,6 +48,7 @@ describe("Numbers Integration", async () => {
   it("creates a new document", async () => {
     const { json } = await call(ctx, "numbers_create_document");
     docName = json.name;
+    tracked.add(docName);
     assert.ok(docName, "Document should have a name");
     assert.ok(json.sheets.length > 0, "Should have at least one sheet");
   });
@@ -360,11 +360,13 @@ describe("Numbers Integration", async () => {
     });
     assert.ok(saveResult.saved);
     docName = saveResult.name;
+    tracked.add(docName);
 
     await call(ctx, "numbers_close_document", { documentName: docName, saving: "no" });
 
     const { json: openResult } = await call(ctx, "numbers_open_document", { filePath: tmpPath });
     docName = openResult.name;
+    tracked.add(docName);
 
     const { json: readResult } = await call(ctx, "numbers_read_cell", {
       documentName: docName,
@@ -470,6 +472,7 @@ describe("Numbers Integration", async () => {
     // Create a second document
     const { json: doc2 } = await call(ctx, "numbers_create_document");
     const doc2Name = doc2.name;
+    tracked.add(doc2Name);
 
     const { json: copyResult } = await call(ctx, "numbers_copy_range", {
       sourceDoc: docName,
@@ -609,6 +612,14 @@ describe("Numbers Integration", async () => {
       arguments: { documentName: "NoSuchDocument_999", cellRef: "A1" },
     });
     assert.equal(result.isError, true);
+  });
+
+  it("returns isError on Creator Studio save without filePath", async (t) => {
+    const { isCreatorStudio } = await import("../src/jxa.js");
+    if (!isCreatorStudio("Numbers")) return t.skip("Creator Studio only");
+    const result = await call(ctx, "numbers_save_document", { documentName: "NoSuchDoc" });
+    assert.equal(result.isError, true, "CS save without filePath must not report success");
+    assert.ok(result.text.includes("filePath"), `error should mention filePath, got: ${result.text}`);
   });
 
   it("closes the document without saving", async () => {

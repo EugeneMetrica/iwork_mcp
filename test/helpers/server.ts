@@ -4,6 +4,7 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { registerNumbersTools } from "../../src/tools/numbers.js";
 import { registerPagesTools } from "../../src/tools/pages.js";
 import { registerKeynoteTools } from "../../src/tools/keynote.js";
+import { registerPixelmatorTools } from "../../src/tools/pixelmator.js";
 import { INSTRUCTIONS } from "../../src/instructions.js";
 
 export interface TestContext {
@@ -20,6 +21,7 @@ export async function createTestServer(): Promise<TestContext> {
   registerNumbersTools(server);
   registerPagesTools(server);
   registerKeynoteTools(server);
+  registerPixelmatorTools(server);
 
   const client = new Client({ name: "test-client", version: "0.0.0" });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
